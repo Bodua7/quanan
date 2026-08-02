@@ -1,0 +1,1083 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>Quán Ăn - Gọi Món & Quản Lý</title>
+<link rel="manifest" href="./manifest.json">
+<link rel="icon" href="./icons/icon-192.png">
+<link rel="apple-touch-icon" href="./icons/icon-192.png">
+<meta name="theme-color" content="#312e81">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Quán Ăn">
+
+<style>
+* { box-sizing:border-box; margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; -webkit-tap-highlight-color:transparent; }
+body { background:#f1f5f9; color:#1e293b; display:flex; justify-content:center; min-height:100vh; }
+.app { width:100%; max-width:480px; background:#f8fafc; min-height:100vh; position:relative; padding-bottom:90px; }
+.hidden { display:none !important; }
+
+.hd { position:sticky; top:0; z-index:100; background:linear-gradient(135deg,#1e1b4b,#312e81); color:#fff; padding:14px 16px; display:flex; justify-content:space-between; align-items:center; box-shadow:0 4px 12px rgba(0,0,0,.15); }
+.hd h1 { font-size:16px; font-weight:700; }
+.hd p { font-size:11px; color:#a5b4fc; }
+.hd-btn { background:rgba(255,255,255,.15); border:none; color:#fff; padding:7px 12px; border-radius:8px; font-size:12px; font-weight:600; cursor:pointer; }
+
+.pad { padding:14px 16px; }
+.card { background:#fff; border-radius:12px; padding:14px; box-shadow:0 1px 3px rgba(0,0,0,.06); border:1px solid #e2e8f0; margin-bottom:12px; }
+.card-title { font-size:14px; font-weight:700; margin-bottom:10px; display:flex; align-items:center; gap:6px; }
+.btn { display:block; width:100%; padding:12px; border:none; border-radius:10px; font-size:14px; font-weight:700; cursor:pointer; text-align:center; }
+.btn-primary { background:#d97706; color:#fff; }
+.btn-primary:active { transform:scale(.98); }
+.btn-outline { background:#fff; border:1.5px solid #cbd5e1; color:#475569; }
+.btn-green { background:#059669; color:#fff; }
+.btn-blue { background:#2563eb; color:#fff; }
+.btn-red { background:#dc2626; color:#fff; }
+.btn-sm { width:auto; padding:7px 12px; font-size:12px; border-radius:8px; }
+input, select, textarea { width:100%; padding:10px 12px; border:1.5px solid #cbd5e1; border-radius:8px; font-size:14px; background:#fff; color:#1e293b; }
+label { font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; display:block; margin-bottom:4px; margin-top:10px; }
+.row { display:flex; gap:8px; }
+.row > * { flex:1; }
+.muted { color:#64748b; font-size:12px; }
+.badge { display:inline-block; padding:3px 9px; border-radius:20px; font-size:11px; font-weight:700; color:#fff; }
+.tag-pending{background:#d97706} .tag-preparing{background:#2563eb} .tag-ready{background:#7c3aed} .tag-served{background:#059669} .tag-cancelled{background:#dc2626}
+
+.tabs { display:flex; gap:6px; overflow-x:auto; padding:10px 16px; background:#fff; border-bottom:1px solid #e2e8f0; position:sticky; top:58px; z-index:90; }
+.tab { flex:0 0 auto; padding:7px 14px; border-radius:8px; border:1px solid #cbd5e1; background:#f8fafc; font-size:12px; font-weight:700; color:#475569; cursor:pointer; white-space:nowrap; }
+.tab.active { background:#312e81; color:#fff; border-color:#312e81; }
+
+.menu-item { display:flex; justify-content:space-between; align-items:center; padding:10px 0; border-bottom:1px solid #f1f5f9; }
+.menu-item:last-child { border-bottom:none; }
+.mi-name { font-size:14px; font-weight:600; }
+.mi-price { font-size:12px; color:#d97706; font-weight:700; margin-top:2px; }
+.qty-ctrl { display:flex; align-items:center; gap:8px; }
+.qty-btn { width:28px; height:28px; border-radius:50%; border:1px solid #cbd5e1; background:#fff; font-size:16px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.qty-num { min-width:18px; text-align:center; font-weight:700; }
+
+.cart-bar { position:fixed; bottom:0; left:50%; transform:translateX(-50%); width:100%; max-width:480px; background:#1e1b4b; color:#fff; padding:12px 16px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; z-index:200; }
+.cart-bar b { font-size:15px; }
+.cart-bar span { font-size:11px; color:#a5b4fc; }
+
+.order-card { border-left:4px solid #d97706; }
+.order-head { display:flex; justify-content:space-between; align-items:center; margin-bottom:6px; }
+.order-items { font-size:13px; color:#334155; margin:6px 0; }
+.order-actions { display:flex; gap:6px; margin-top:8px; }
+
+.track-steps { display:flex; justify-content:space-between; margin:16px 0; }
+.step { flex:1; text-align:center; position:relative; }
+.step .dot { width:26px; height:26px; border-radius:50%; background:#e2e8f0; color:#94a3b8; display:flex; align-items:center; justify-content:center; margin:0 auto 4px; font-size:12px; font-weight:700; }
+.step.done .dot { background:#059669; color:#fff; }
+.step.current .dot { background:#d97706; color:#fff; }
+.step p { font-size:10px; color:#64748b; }
+
+.login-wrap { display:flex; align-items:center; justify-content:center; min-height:80vh; padding:20px; }
+.login-box { width:100%; max-width:320px; text-align:center; }
+
+.stock-low { color:#dc2626; font-weight:700; }
+.modal-bg { display:none; position:fixed; inset:0; background:rgba(0,0,0,.5); z-index:500; align-items:flex-end; justify-content:center; }
+.modal-bg.active { display:flex; }
+.modal-box { background:#fff; width:100%; max-width:480px; border-radius:16px 16px 0 0; padding:16px; max-height:85vh; overflow-y:auto; }
+.modal-close { text-align:right; font-size:13px; color:#64748b; margin-bottom:8px; cursor:pointer; }
+.list-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f1f5f9; }
+.icon-btn { background:none; border:none; font-size:16px; cursor:pointer; padding:4px; }
+.spin { display:inline-block; width:14px; height:14px; border:2px solid #cbd5e1; border-top-color:#d97706; border-radius:50%; animation:spin 0.7s linear infinite; vertical-align:middle; }
+@keyframes spin { to { transform:rotate(360deg); } }
+
+.splash { min-height:100vh; background:linear-gradient(180deg,#fff7ed 0%,#fde7d4 55%,#fef3ec 100%); display:flex; flex-direction:column; align-items:center; padding:28px 20px 40px; position:relative; }
+.splash-lock { position:absolute; top:16px; right:16px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,.75); backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; font-size:17px; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.1); }
+.splash-wallet { position:absolute; top:16px; right:64px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,.75); backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; font-size:17px; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.1); }
+.splash-logos { display:flex; flex-wrap:wrap; justify-content:center; gap:16px; margin:44px 0 22px; }
+.splash-logo { width:118px; height:118px; border-radius:50%; overflow:hidden; border:3px solid #fff; box-shadow:0 6px 16px rgba(0,0,0,.14); background:#fff; display:flex; align-items:center; justify-content:center; }
+.splash-logo img { width:100%; height:100%; object-fit:cover; }
+.splash-logo-emoji { font-size:46px; }
+.splash-name { font-size:30px; font-weight:800; text-align:center; margin-top:6px; font-family:Georgia,'Times New Roman',serif; color:#1e1b4b; letter-spacing:.3px; }
+.splash-addr { font-size:14px; color:#57606f; text-align:center; margin-top:10px; max-width:320px; }
+.splash-cta-wrap { width:100%; max-width:340px; margin-top:30px; }
+.splash-cta { background:linear-gradient(135deg,#f97316,#ea580c); color:#fff; font-size:15px; box-shadow:0 6px 16px rgba(234,88,12,.35); }
+.splash-tagline { margin-top:24px; font-size:12px; color:#94a3b8; text-align:center; font-style:italic; }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+
+  <div id="configNotice" class="pad hidden">
+    <div class="card" style="border-left:4px solid #dc2626">
+      <div class="card-title">⚠️ Chưa cấu hình API</div>
+      <p class="muted">Mở file QuanAn.html, tìm dòng <b>const API_URL</b> gần cuối file và dán Web app URL của Google Apps Script vào đó.</p>
+    </div>
+  </div>
+
+  <!-- TRANG CHÀO KHI QUÉT QR -->
+  <div id="scr-splash" class="splash hidden">
+    <div class="splash-lock" onclick="goAdminLogin()" title="Đăng nhập quản lý">🔒</div>
+    <div class="splash-wallet" onclick="openWallet()">👛</div>
+    <div class="splash-logos" id="splashLogos"></div>
+    <h1 class="splash-name" id="splashName">Quán Ăn</h1>
+    <p class="splash-addr" id="splashAddr"></p>
+    <div class="splash-cta-wrap">
+      <button class="btn splash-cta" onclick="fromSplash()">Xem Menu &amp; Gọi Món</button>
+    </div>
+    <p class="splash-tagline" id="splashTagline"></p>
+  </div>
+
+  <div class="hd" id="hdBar">
+    <div>
+      <h1 id="restName">🍜 Quán Ăn</h1>
+      <p id="hdSub">Gọi món qua QR <span id="syncDot" class="hidden">· <span class="spin"></span></span></p>
+    </div>
+    <button class="hd-btn" id="btnHeaderAction" onclick="goAdminLogin()">🔐 Quản lý</button>
+  </div>
+
+  <!-- CUSTOMER: CHỌN BÀN -->
+  <div id="scr-table" class="pad hidden">
+    <div class="card">
+      <div class="card-title">👋 Xin chào! Vui lòng chọn số bàn</div>
+      <label>Số bàn của bạn</label>
+      <input type="number" id="inpTable" placeholder="VD: 5">
+      <button class="btn btn-primary" style="margin-top:14px" onclick="confirmTable()">Xem thực đơn →</button>
+    </div>
+  </div>
+
+  <!-- CUSTOMER: MENU -->
+  <div id="scr-menu" class="hidden">
+    <div class="tabs" id="menuCatTabs"></div>
+    <div class="pad" id="menuList"></div>
+  </div>
+
+  <!-- CUSTOMER: GIỎ HÀNG -->
+  <div id="scr-cart" class="pad hidden">
+    <div class="card">
+      <div class="card-title">🧾 Hóa đơn - Bàn <span id="cartTableNo"></span></div>
+      <div id="cartList"></div>
+      <div style="display:flex;justify-content:space-between;margin-top:10px;font-weight:800;font-size:15px">
+        <span>Tổng cộng</span><span id="cartTotal" style="color:#d97706">0đ</span>
+      </div>
+    </div>
+    <label>Ghi chú cho quán (không bắt buộc)</label>
+    <textarea id="cartNote" rows="2" placeholder="VD: ít cay, không hành..."></textarea>
+    <button class="btn btn-outline" style="margin-top:10px" onclick="showMenu()">← Chọn thêm món</button>
+    <button class="btn btn-primary" style="margin-top:8px" id="btnSubmitOrder" onclick="submitOrder()">✅ Xác nhận gửi tới quán</button>
+  </div>
+
+  <!-- CUSTOMER: THEO DÕI ĐƠN -->
+  <div id="scr-track" class="pad hidden">
+    <div class="card">
+      <div class="card-title">📦 Đơn của bạn - Bàn <span id="trackTableNo"></span></div>
+      <div class="track-steps" id="trackSteps"></div>
+      <div id="trackItems" class="order-items"></div>
+      <div id="trackNoteWrap" class="muted"></div>
+    </div>
+    <button class="btn btn-outline" onclick="showMenu()">➕ Gọi thêm món</button>
+    <div id="feedbackBox" class="card hidden" style="margin-top:12px">
+      <div class="card-title">⭐ Góp ý cho quán</div>
+      <label>Bạn đánh giá món ăn / dịch vụ thế nào?</label>
+      <div class="row" id="starRow"></div>
+      <label>Góp ý thêm</label>
+      <textarea id="fbComment" rows="2" placeholder="Cảm nhận của bạn..."></textarea>
+      <button class="btn btn-primary" style="margin-top:10px" onclick="sendFeedback()">Gửi góp ý</button>
+    </div>
+  </div>
+
+  <div class="cart-bar hidden" id="cartBar" onclick="showCart()">
+    <div><b id="cartBarCount">0 món</b><br><span>Chạm để xem hóa đơn</span></div>
+    <b id="cartBarTotal">0đ</b>
+  </div>
+
+  <!-- ADMIN LOGIN -->
+  <div id="scr-admin-login" class="hidden">
+    <div class="login-wrap">
+      <div class="login-box">
+        <div style="font-size:40px;margin-bottom:8px">🔐</div>
+        <div class="card">
+          <label>Mã quản lý (PIN)</label>
+          <input type="password" id="inpAdminPin" placeholder="Nhập mã PIN">
+          <button class="btn btn-primary" style="margin-top:12px" onclick="adminLogin()">Đăng nhập</button>
+          <button class="btn btn-outline" style="margin-top:8px" onclick="goCustomer()">← Quay lại đặt món</button>
+        </div>
+        <p class="muted">PIN mặc định: Nhân viên 5678 · Chủ quán 1234 (đổi trong Cài đặt sau khi đăng nhập bằng PIN chủ quán)</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ADMIN DASHBOARD -->
+  <div id="scr-admin" class="hidden">
+    <div class="pad" style="padding-bottom:0">
+      <span class="badge" id="roleLabel" style="background:#312e81"></span>
+    </div>
+    <div class="tabs">
+      <div class="tab active" data-t="orders" onclick="switchAdminTab(this,'orders')">📋 Đơn hàng</div>
+      <div class="tab" data-t="menu" onclick="switchAdminTab(this,'menu')">🍽️ Thực đơn</div>
+      <div class="tab" data-t="inv" onclick="switchAdminTab(this,'inv')">📦 Kho hàng</div>
+      <div class="tab" data-t="stock" onclick="switchAdminTab(this,'stock')">🧮 Kiểm kê</div>
+      <div class="tab owner-only" data-t="staff" onclick="switchAdminTab(this,'staff')">👥 Nhân viên</div>
+      <div class="tab owner-only" data-t="settings" onclick="switchAdminTab(this,'settings')">⚙️ Cài đặt</div>
+    </div>
+    <div class="pad hidden" id="staffQuickLinks" style="padding-bottom:0">
+      <a class="btn btn-outline btn-sm" style="text-decoration:none;display:inline-block" href="?checkin=1" target="_blank">🕒 Chấm công của tôi</a>
+    </div>
+
+    <div class="pad admin-tab" id="tab-orders">
+      <div class="tabs" style="position:static;padding:0 0 10px 0;background:none;border:none">
+        <div class="tab active" data-s="active" onclick="filterOrders(this,'active')">Đang xử lý</div>
+        <div class="tab" data-s="served" onclick="filterOrders(this,'served')">Đã xong</div>
+        <div class="tab" data-s="all" onclick="filterOrders(this,'all')">Tất cả</div>
+      </div>
+      <div id="ordersList"></div>
+    </div>
+
+    <div class="pad admin-tab hidden" id="tab-menu">
+      <button class="btn btn-primary" onclick="openMenuItemModal()">+ Thêm món mới</button>
+      <div id="menuAdminList" style="margin-top:12px"></div>
+    </div>
+
+    <div class="pad admin-tab hidden" id="tab-inv">
+      <button class="btn btn-primary" onclick="openInvModal()">+ Thêm nguyên liệu</button>
+      <div id="invList" style="margin-top:12px"></div>
+    </div>
+
+    <div class="pad admin-tab hidden" id="tab-stock">
+      <div class="card">
+        <label>Ngày kiểm kê</label>
+        <input type="date" id="stockDate" onchange="loadStocktake()">
+        <div id="stockList" style="margin-top:10px"></div>
+        <button class="btn btn-green" style="margin-top:10px" onclick="saveStocktake()">💾 Lưu phiếu kiểm kê</button>
+      </div>
+    </div>
+
+    <div class="pad admin-tab hidden owner-only" id="tab-staff">
+      <div class="card">
+        <div class="card-title">➕ Thêm nhân viên</div>
+        <div class="row">
+          <input id="newStaffName" placeholder="Tên nhân viên">
+          <input id="newStaffPin" placeholder="PIN 4 số" maxlength="4">
+        </div>
+        <button class="btn btn-primary" style="margin-top:10px" onclick="addStaff()">Thêm</button>
+      </div>
+      <div class="card">
+        <div class="card-title">👥 Danh sách nhân viên</div>
+        <div id="staffList"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">🕒 Bảng chấm công</div>
+        <label>Ngày</label>
+        <input type="date" id="checkinDate" onchange="loadCheckinHistory()">
+        <div id="checkinHistory" style="margin-top:10px"></div>
+      </div>
+      <a class="btn btn-outline" style="margin-top:4px;text-decoration:none;display:block" href="?checkin=1" target="_blank">🔗 Mở màn hình chấm công cho nhân viên</a>
+    </div>
+
+    <div class="pad admin-tab hidden owner-only" id="tab-settings">
+      <div class="card">
+        <div class="card-title">🏪 Thông tin quán</div>
+        <label>Tên quán</label>
+        <input id="setRestName">
+        <button class="btn btn-primary" style="margin-top:10px" onclick="saveRestName()">Lưu</button>
+      </div>
+      <div class="card">
+        <div class="card-title">🎨 Trang chào khi quét QR</div>
+        <p class="muted">Đây là màn hình đầu tiên khách thấy khi quét mã QR trên bàn.</p>
+        <label>Địa chỉ quán</label>
+        <input id="setRestAddr" placeholder="VD: 77 Phong Định Cảng, Nghệ An">
+        <label>Câu khẩu hiệu (tagline)</label>
+        <input id="setRestTagline" placeholder="VD: Phục vụ bằng cả trái tim.">
+        <label>Ảnh/logo 1 (dán link ảnh)</label>
+        <input id="setLogo1" placeholder="https://...">
+        <label>Ảnh/logo 2 (dán link ảnh)</label>
+        <input id="setLogo2" placeholder="https://...">
+        <label>Ảnh/logo 3 (dán link ảnh)</label>
+        <input id="setLogo3" placeholder="https://...">
+        <p class="muted" style="margin-top:6px">Chưa có link ảnh? Để trống - app sẽ tự hiện icon món ăn mặc định. Bạn có thể upload ảnh lên Google Drive/Imgur rồi lấy link công khai để dán vào đây.</p>
+        <button class="btn btn-primary" style="margin-top:10px" onclick="saveSplashSettings()">Lưu trang chào</button>
+      </div>
+      <div class="card">
+        <div class="card-title">👛 Cổng ngầm sang app Ví</div>
+        <p class="muted">Link app "Thu Chi Đa Ví" của bạn. Chỉ chủ quán mới thấy mục này; icon 👛 trên trang chào sẽ mở thẳng link này (không hiện chữ giải thích cho người khác thấy).</p>
+        <input id="setWalletUrl" placeholder="https://<username>.github.io/thuchi-pwa/">
+        <button class="btn btn-primary" style="margin-top:10px" onclick="saveWalletUrl()">Lưu link app Ví</button>
+      </div>
+      <div class="card">
+        <div class="card-title">📍 Vị trí quán (bắt buộc định vị cho nhân viên)</div>
+        <p class="muted">Nhân viên chỉ đăng nhập được khi đang đứng trong phạm vi 20m quanh vị trí này và đã bật định vị (GPS). Đứng tại quán rồi bấm "Lấy vị trí hiện tại" để lưu tọa độ.</p>
+        <div class="row">
+          <div><label>Vĩ độ (lat)</label><input id="setRestLat" type="number" step="any"></div>
+          <div><label>Kinh độ (lng)</label><input id="setRestLng" type="number" step="any"></div>
+        </div>
+        <button class="btn btn-outline" style="margin-top:10px" onclick="useMyLocationForRestaurant()">📍 Lấy vị trí hiện tại</button>
+        <button class="btn btn-primary" style="margin-top:8px" onclick="saveRestaurantLocation()">Lưu vị trí quán</button>
+        <p class="muted" id="restLocStatus" style="margin-top:6px"></p>
+      </div>
+      <div class="card">
+        <div class="card-title">🔑 Mã PIN đăng nhập</div>
+        <p class="muted">2 cổng riêng biệt: PIN nhân viên chỉ vào được Bếp/Kho/Kiểm kê; PIN chủ quán vào được toàn bộ (kể cả Thực đơn, Nhân viên, Cài đặt).</p>
+        <label>Đổi mã PIN chủ quán</label>
+        <input type="password" id="setNewPin" placeholder="Mã PIN chủ quán mới (4-6 số)">
+        <button class="btn btn-primary" style="margin-top:10px" onclick="changePin()">Đổi PIN chủ quán</button>
+        <label>Đổi mã PIN nhân viên</label>
+        <input type="password" id="setNewStaffPin" placeholder="Mã PIN nhân viên mới (4-6 số)">
+        <button class="btn btn-blue" style="margin-top:10px" onclick="changeStaffPin()">Đổi PIN nhân viên</button>
+      </div>
+      <div class="card">
+        <div class="card-title">📱 Mã QR cho khách gọi món</div>
+        <p class="muted">In mã này và dán tại từng bàn. Khách quét vào sẽ tự chọn số bàn.</p>
+        <img id="qrCustomer" style="width:180px;height:180px;display:block;margin:10px auto">
+        <p class="muted" id="qrLink" style="text-align:center;word-break:break-all"></p>
+      </div>
+      <button class="btn btn-outline" onclick="adminLogout()">🚪 Đăng xuất</button>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="modalMenuItem">
+    <div class="modal-box">
+      <div class="modal-close" onclick="closeModal('modalMenuItem')">✕ Đóng</div>
+      <div class="card-title">Món ăn</div>
+      <input type="hidden" id="miId">
+      <label>Tên món</label><input id="miName">
+      <label>Giá (đ)</label><input id="miPrice" type="number">
+      <label>Danh mục</label><input id="miCat" placeholder="VD: Món chính, Nước uống...">
+      <label style="display:flex;align-items:center;gap:8px;margin-top:12px"><input type="checkbox" id="miAvail" style="width:auto" checked> Đang bán</label>
+      <button class="btn btn-primary" style="margin-top:14px" onclick="saveMenuItem()">Lưu</button>
+      <button class="btn btn-red" style="margin-top:8px" id="miDeleteBtn" onclick="deleteMenuItem()">Xóa món này</button>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="modalInv">
+    <div class="modal-box">
+      <div class="modal-close" onclick="closeModal('modalInv')">✕ Đóng</div>
+      <div class="card-title">Nguyên liệu / Hàng hóa</div>
+      <input type="hidden" id="invId">
+      <label>Tên</label><input id="invName">
+      <div class="row">
+        <div><label>Số lượng tồn</label><input id="invQty" type="number"></div>
+        <div><label>Đơn vị</label><input id="invUnit" placeholder="kg, gói, chai..."></div>
+      </div>
+      <label>Mức tồn tối thiểu (cảnh báo)</label><input id="invMin" type="number">
+      <button class="btn btn-primary" style="margin-top:14px" onclick="saveInvItem()">Lưu</button>
+      <button class="btn btn-red" style="margin-top:8px" id="invDeleteBtn" onclick="deleteInvItem()">Xóa</button>
+    </div>
+  </div>
+
+  <!-- STAFF CHECK-IN (link riêng ?checkin=1) -->
+  <div id="scr-checkin" class="pad hidden">
+    <div class="card">
+      <div class="card-title">🕒 Chấm công nhân viên</div>
+      <label>Chọn tên</label>
+      <select id="ckStaffSelect"></select>
+      <label>Mã PIN cá nhân</label>
+      <input type="password" id="ckPin" maxlength="4">
+      <div class="row" style="margin-top:14px">
+        <button class="btn btn-green" onclick="staffCheckIn()">✅ Check-in</button>
+        <button class="btn btn-red" onclick="staffCheckOut()">🚪 Check-out</button>
+      </div>
+      <p class="muted" id="ckStatus" style="margin-top:10px"></p>
+    </div>
+  </div>
+
+</div>
+
+<script>
+/* ================= CẤU HÌNH API (Google Apps Script Web App URL) =================
+   Dán "Web app URL" bạn lấy được sau khi Deploy Apps Script vào đây.
+   Dạng: https://script.google.com/macros/s/AKfycb.../exec
+==================================================================================== */
+const API_URL = "https://script.google.com/macros/s/AKfycbzsCEgrjPZM6q0OuxRniFuDCf5sywvs-CfJBy_A3bll9_zCKk-17k35BRH2LSPudl54JA/exec";
+
+const isConfigured = API_URL.indexOf('PASTE_') === -1 && API_URL.length > 10;
+if (!isConfigured) document.getElementById('configNotice').classList.remove('hidden');
+
+/* ================= STATE ================= */
+let currentTable = localStorage.getItem('qa_table') || '';
+let cart = {};
+let menuItems = {};
+let ordersMap = {};
+let inventoryItems = {};
+let staffList = {};
+let settings = {};
+let currentOrderId = localStorage.getItem('qa_orderId') || null;
+let isAdmin = sessionStorage.getItem('qa_isAdmin') === '1';
+let mgmtRole = sessionStorage.getItem('qa_role') || '';
+let ordersFilter = 'active';
+const STATUS_STEPS = [
+  {k:'pending', label:'Chờ xác nhận', icon:'1'},
+  {k:'preparing', label:'Đang chế biến', icon:'2'},
+  {k:'ready', label:'Sẵn sàng', icon:'3'},
+  {k:'served', label:'Đã phục vụ', icon:'✓'}
+];
+
+function money(n){ return (Number(n)||0).toLocaleString('vi-VN') + 'đ'; }
+function todayStr(){ return new Date().toISOString().split('T')[0]; }
+function toMap(arr){ const m={}; (arr||[]).forEach(x=>{ if(x.id) m[x.id]=x; }); return m; }
+
+/* ================= API HELPERS ================= */
+async function apiGet(params){
+  const qs = new URLSearchParams(params).toString();
+  const res = await fetch(API_URL + '?' + qs);
+  return res.json();
+}
+async function apiPost(body){
+  // dùng text/plain để tránh CORS preflight với Apps Script
+  const res = await fetch(API_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(body) });
+  return res.json();
+}
+
+let polling = false;
+async function fetchAll(){
+  if (!isConfigured) return;
+  const dot = document.getElementById('syncDot');
+  dot.classList.remove('hidden');
+  try {
+    const data = await apiGet({action:'getAll'});
+    if (data.ok){
+      menuItems = toMap(data.menu);
+      ordersMap = toMap(data.orders);
+      inventoryItems = toMap(data.inventory);
+      staffList = toMap(data.staff);
+      settings = data.settings || {};
+      onDataUpdate();
+    }
+  } catch(err){ console.error('Lỗi đồng bộ:', err); }
+  finally { dot.classList.add('hidden'); }
+}
+
+function onDataUpdate(){
+  document.getElementById('restName').textContent = '🍜 ' + (settings.restaurantName || 'Quán Ăn');
+  document.getElementById('setRestName').value = settings.restaurantName || '';
+  document.getElementById('setRestAddr').value = settings.restaurantAddress || '';
+  document.getElementById('setRestTagline').value = settings.restaurantTagline || '';
+  document.getElementById('setLogo1').value = settings.splashLogo1 || '';
+  document.getElementById('setLogo2').value = settings.splashLogo2 || '';
+  document.getElementById('setLogo3').value = settings.splashLogo3 || '';
+  document.getElementById('setWalletUrl').value = settings.walletUrl || '';
+  document.getElementById('setRestLat').value = settings.restLat || '';
+  document.getElementById('setRestLng').value = settings.restLng || '';
+  if (!document.getElementById('scr-splash').classList.contains('hidden')) renderSplash();
+  if (!document.getElementById('scr-menu').classList.contains('hidden')) renderMenu();
+  if (!document.getElementById('scr-track').classList.contains('hidden')) renderTrackFromState();
+  if (!document.getElementById('scr-admin').classList.contains('hidden')){
+    renderOrders(); renderMenuAdmin(); renderInventory(); renderStaffList();
+  }
+  renderCheckinStaffSelect();
+}
+
+function renderSplash(){
+  document.getElementById('splashName').textContent = settings.restaurantName || 'Quán Ăn';
+  const addrEl = document.getElementById('splashAddr');
+  addrEl.textContent = settings.restaurantAddress || '';
+  addrEl.classList.toggle('hidden', !settings.restaurantAddress);
+  const tagEl = document.getElementById('splashTagline');
+  tagEl.textContent = settings.restaurantTagline || '';
+  tagEl.classList.toggle('hidden', !settings.restaurantTagline);
+  const logos = [settings.splashLogo1, settings.splashLogo2, settings.splashLogo3].filter(Boolean);
+  const wrap = document.getElementById('splashLogos');
+  wrap.innerHTML = logos.length
+    ? logos.map(url => `<div class="splash-logo"><img src="${url}" alt=""></div>`).join('')
+    : ['🍜','🥤','🍰'].map(e => `<div class="splash-logo splash-logo-emoji">${e}</div>`).join('');
+}
+
+function startPolling(){
+  if (polling) return;
+  polling = true;
+  fetchAll();
+  setInterval(fetchAll, 4000);
+}
+
+/* ================= ROUTER ================= */
+function hideAllScreens(){
+  ['scr-splash','scr-table','scr-menu','scr-cart','scr-track','scr-admin-login','scr-admin','scr-checkin']
+    .forEach(id=>document.getElementById(id).classList.add('hidden'));
+  document.getElementById('cartBar').classList.add('hidden');
+  document.getElementById('hdBar').classList.remove('hidden');
+}
+
+function showSplash(){
+  hideAllScreens();
+  document.getElementById('hdBar').classList.add('hidden');
+  document.getElementById('scr-splash').classList.remove('hidden');
+  renderSplash();
+}
+
+function fromSplash(){
+  if (currentTable) { showMenu(); return; }
+  hideAllScreens();
+  document.getElementById('scr-table').classList.remove('hidden');
+}
+
+function boot(){
+  if (!isConfigured) { hideAllScreens(); return; }
+  startPolling();
+
+  const params = new URLSearchParams(location.search);
+  const t = params.get('table');
+  if (t) { currentTable = t; localStorage.setItem('qa_table', t); }
+
+  if (params.get('checkin') === '1') { showCheckinScreen(); return; }
+  if (params.get('admin') === '1' && !isAdmin) { goAdminLogin(); return; }
+  if (isAdmin) { showAdmin(); return; }
+  if (currentOrderId) { showTrack(); return; }
+
+  showSplash();
+}
+
+function confirmTable(){
+  const v = document.getElementById('inpTable').value.trim();
+  if(!v) return alert('Vui lòng nhập số bàn!');
+  currentTable = v;
+  localStorage.setItem('qa_table', v);
+  showMenu();
+}
+
+function goCustomer(){ isAdmin=false; sessionStorage.removeItem('qa_isAdmin'); boot(); }
+function goAdminLogin(){ hideAllScreens(); document.getElementById('scr-admin-login').classList.remove('hidden'); }
+
+/* ================= CUSTOMER: MENU ================= */
+function showMenu(){
+  hideAllScreens();
+  document.getElementById('scr-menu').classList.remove('hidden');
+  document.getElementById('hdSub').textContent = 'Gọi món qua QR';
+  renderMenu();
+  updateCartBar();
+}
+
+function renderMenu(){
+  const cats = [...new Set(Object.values(menuItems).map(m=>m.category||'Khác'))];
+  const tabsEl = document.getElementById('menuCatTabs');
+  if (tabsEl.children.length===0 && cats.length){
+    tabsEl.innerHTML = cats.map((c,i)=>`<div class="tab ${i===0?'active':''}" onclick="filterMenuCat(this,'${c}')">${c}</div>`).join('');
+  }
+  const activeTab = tabsEl.querySelector('.tab.active');
+  const activeCat = activeTab ? activeTab.textContent : (cats[0]||'');
+  filterMenuCat(activeTab, activeCat);
+}
+
+function filterMenuCat(el, cat){
+  if (el){
+    document.querySelectorAll('#menuCatTabs .tab').forEach(t=>t.classList.remove('active'));
+    el.classList.add('active');
+  }
+  const list = document.getElementById('menuList');
+  const entries = Object.entries(menuItems).filter(([id,m])=> (m.category||'Khác')===cat && m.available!==false && m.available!=='FALSE');
+  if (entries.length===0){ list.innerHTML = '<p class="muted">Chưa có món trong danh mục này.</p>'; return; }
+  list.innerHTML = `<div class="card">` + entries.map(([id,m])=>`
+    <div class="menu-item">
+      <div>
+        <div class="mi-name">${m.name}</div>
+        <div class="mi-price">${money(m.price)}</div>
+      </div>
+      <div class="qty-ctrl">
+        <button class="qty-btn" onclick="changeQty('${id}',-1)">−</button>
+        <span class="qty-num" id="qtynum-${id}">${cart[id]||0}</span>
+        <button class="qty-btn" onclick="changeQty('${id}',1)">+</button>
+      </div>
+    </div>`).join('') + `</div>`;
+}
+
+function changeQty(id, delta){
+  cart[id] = Math.max(0, (cart[id]||0) + delta);
+  if (cart[id]===0) delete cart[id];
+  const el = document.getElementById('qtynum-'+id);
+  if (el) el.textContent = cart[id]||0;
+  updateCartBar();
+}
+
+function cartTotal(){
+  return Object.entries(cart).reduce((sum,[id,q])=> sum + (Number(menuItems[id]?.price)||0)*q, 0);
+}
+function cartCount(){ return Object.values(cart).reduce((a,b)=>a+b,0); }
+
+function updateCartBar(){
+  const bar = document.getElementById('cartBar');
+  if (cartCount()>0){
+    bar.classList.remove('hidden');
+    document.getElementById('cartBarCount').textContent = cartCount()+' món';
+    document.getElementById('cartBarTotal').textContent = money(cartTotal());
+  } else bar.classList.add('hidden');
+}
+
+function showCart(){
+  if (cartCount()===0) return;
+  hideAllScreens();
+  document.getElementById('scr-cart').classList.remove('hidden');
+  document.getElementById('cartTableNo').textContent = currentTable;
+  const list = document.getElementById('cartList');
+  list.innerHTML = Object.entries(cart).map(([id,q])=>{
+    const m = menuItems[id]; if(!m) return '';
+    return `<div class="menu-item">
+      <div><div class="mi-name">${m.name}</div><div class="mi-price">${money(m.price)} x ${q}</div></div>
+      <div class="qty-ctrl">
+        <button class="qty-btn" onclick="changeQty('${id}',-1);showCart()">−</button>
+        <span class="qty-num">${q}</span>
+        <button class="qty-btn" onclick="changeQty('${id}',1);showCart()">+</button>
+      </div></div>`;
+  }).join('');
+  document.getElementById('cartTotal').textContent = money(cartTotal());
+}
+
+async function submitOrder(){
+  if (cartCount()===0) return alert('Giỏ hàng trống!');
+  const btn = document.getElementById('btnSubmitOrder');
+  btn.disabled = true; btn.textContent = 'Đang gửi...';
+  const items = Object.entries(cart).map(([id,q])=>({id, name:menuItems[id].name, price:menuItems[id].price, qty:q}));
+  try{
+    const res = await apiPost({
+      action:'addOrder', table: currentTable, items, total: cartTotal(),
+      note: document.getElementById('cartNote').value.trim()
+    });
+    if (res.ok){
+      currentOrderId = res.id;
+      localStorage.setItem('qa_orderId', currentOrderId);
+      cart = {};
+      document.getElementById('cartNote').value='';
+      await fetchAll();
+      showTrack();
+    } else alert('Lỗi khi gửi đơn: ' + (res.error||''));
+  } catch(err){ alert('Không kết nối được tới quán, thử lại nhé!'); }
+  finally{ btn.disabled = false; btn.textContent = '✅ Xác nhận gửi tới quán'; }
+}
+
+/* ================= CUSTOMER: TRACK ORDER ================= */
+function showTrack(){
+  hideAllScreens();
+  document.getElementById('scr-track').classList.remove('hidden');
+  renderTrackFromState();
+  fetchAll();
+}
+
+function renderTrackFromState(){
+  const o = ordersMap[currentOrderId];
+  if (!o) return;
+  document.getElementById('trackTableNo').textContent = o.table;
+  renderTrackSteps(o.status);
+  document.getElementById('trackItems').innerHTML = o.items.map(it=>`${it.name} x${it.qty} — ${money(it.price*it.qty)}`).join('<br>')
+    + `<br><b>Tổng: ${money(o.total)}</b>`;
+  document.getElementById('trackNoteWrap').textContent = o.note ? ('Ghi chú: '+o.note) : '';
+  const fb = document.getElementById('feedbackBox');
+  if (o.status==='served'){
+    fb.classList.remove('hidden');
+    if (!document.getElementById('starRow').children.length) buildStars();
+  } else fb.classList.add('hidden');
+}
+
+function renderTrackSteps(status){
+  const idx = STATUS_STEPS.findIndex(s=>s.k===status);
+  document.getElementById('trackSteps').innerHTML = STATUS_STEPS.map((s,i)=>{
+    let cls = i<idx ? 'done' : (i===idx ? 'current' : '');
+    return `<div class="step ${cls}"><div class="dot">${i<idx?'✓':s.icon}</div><p>${s.label}</p></div>`;
+  }).join('');
+}
+
+let fbRating = 5;
+function buildStars(){
+  const row = document.getElementById('starRow');
+  row.innerHTML = [1,2,3,4,5].map(n=>`<span onclick="setStar(${n})" id="star-${n}" style="font-size:26px;cursor:pointer;flex:none">⭐</span>`).join('');
+  setStar(5);
+}
+function setStar(n){
+  fbRating = n;
+  for(let i=1;i<=5;i++) document.getElementById('star-'+i).style.opacity = i<=n ? 1 : 0.3;
+}
+async function sendFeedback(){
+  await apiPost({
+    action:'addFeedback', orderId: currentOrderId, table: currentTable,
+    rating: fbRating, comment: document.getElementById('fbComment').value.trim()
+  });
+  alert('Cảm ơn góp ý của bạn! 🙏');
+  document.getElementById('feedbackBox').classList.add('hidden');
+  localStorage.removeItem('qa_orderId');
+  currentOrderId = null;
+}
+
+/* ================= ADMIN: LOGIN ================= */
+function haversineMeters(lat1, lon1, lat2, lon2){
+  const R = 6371000;
+  const toRad = d => d * Math.PI / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a = Math.sin(dLat/2)**2 + Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon/2)**2;
+  return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+}
+// Nhân viên chỉ được đăng nhập khi đã bật định vị và đang đứng trong bán kính cho phép quanh quán.
+const STAFF_LOGIN_RADIUS_M = 20;
+function checkStaffLocation(){
+  return new Promise(resolve => {
+    const rLat = parseFloat(settings.restLat);
+    const rLng = parseFloat(settings.restLng);
+    if (!rLat && rLat !== 0 || !rLng && rLng !== 0){
+      alert('Chủ quán chưa cài đặt vị trí quán (mục ⚙️ Cài đặt), nên chưa thể đăng nhập nhân viên bằng định vị.');
+      return resolve(false);
+    }
+    if (!navigator.geolocation){
+      alert('Thiết bị/trình duyệt không hỗ trợ định vị. Không thể đăng nhập nhân viên.');
+      return resolve(false);
+    }
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const dist = haversineMeters(pos.coords.latitude, pos.coords.longitude, rLat, rLng);
+        if (dist > STAFF_LOGIN_RADIUS_M){
+          alert('Bạn đang cách quán khoảng ' + Math.round(dist) + 'm. Cần đứng tại quán (trong phạm vi ' + STAFF_LOGIN_RADIUS_M + 'm) để đăng nhập.');
+          resolve(false);
+        } else resolve(true);
+      },
+      () => {
+        alert('Vui lòng bật định vị (GPS) và cho phép truy cập vị trí để đăng nhập nhân viên.');
+        resolve(false);
+      },
+      { enableHighAccuracy:true, timeout:10000 }
+    );
+  });
+}
+async function adminLogin(){
+  const pin = document.getElementById('inpAdminPin').value.trim();
+  const res = await apiPost({action:'login', pin});
+  if (!res.ok) return alert('Sai mã PIN!');
+  const role = res.role || 'staff';
+  if (role !== 'admin'){
+    const okLoc = await checkStaffLocation();
+    if (!okLoc) return;
+  }
+  isAdmin = true;
+  mgmtRole = role;
+  sessionStorage.setItem('qa_isAdmin','1');
+  sessionStorage.setItem('qa_role', mgmtRole);
+  document.getElementById('inpAdminPin').value = '';
+  showAdmin();
+}
+function adminLogout(){ mgmtRole=''; sessionStorage.removeItem('qa_role'); goCustomer(); }
+
+function applyRoleVisibility(){
+  const isOwner = mgmtRole === 'admin';
+  document.getElementById('roleLabel').textContent = isOwner ? '🔐 Chủ quán · Toàn quyền' : '👨‍🍳 Nhân viên · Bếp & Kho';
+  document.querySelectorAll('.owner-only').forEach(el => el.classList.toggle('hidden', !isOwner));
+  document.getElementById('staffQuickLinks').classList.toggle('hidden', isOwner);
+  document.getElementById('hdSub').textContent = isOwner ? 'Quản lý quán ăn' : 'Khu vực nhân viên';
+  if (!isOwner){
+    const activeTab = document.querySelector('#scr-admin > .tabs .tab.active');
+    if (activeTab && activeTab.classList.contains('owner-only')){
+      document.querySelector('#scr-admin > .tabs .tab[data-t="orders"]').click();
+    }
+  }
+}
+
+function showAdmin(){
+  hideAllScreens();
+  document.getElementById('scr-admin').classList.remove('hidden');
+  applyRoleVisibility();
+  renderOrders(); renderMenuAdmin(); renderInventory(); renderStaffList();
+  document.getElementById('stockDate').value = todayStr();
+  document.getElementById('checkinDate').value = todayStr();
+  loadStocktake(); loadCheckinHistory();
+
+  const base = settings.publicUrl || (location.origin + location.pathname);
+  document.getElementById('qrLink').textContent = base;
+  document.getElementById('qrCustomer').src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(base);
+}
+
+function switchAdminTab(el, tab){
+  document.querySelectorAll('#scr-admin > .tabs .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  document.querySelectorAll('.admin-tab').forEach(t=>t.classList.add('hidden'));
+  document.getElementById('tab-'+tab).classList.remove('hidden');
+}
+
+/* ---- ORDERS ---- */
+function filterOrders(el, f){
+  document.querySelectorAll('#tab-orders .tab').forEach(t=>t.classList.remove('active'));
+  el.classList.add('active');
+  ordersFilter = f;
+  renderOrders();
+}
+function renderOrders(){
+  let entries = Object.entries(ordersMap).sort((a,b)=>b[1].createdAt-a[1].createdAt);
+  if (ordersFilter==='active') entries = entries.filter(([id,o])=>o.status!=='served' && o.status!=='cancelled');
+  if (ordersFilter==='served') entries = entries.filter(([id,o])=>o.status==='served');
+  const list = document.getElementById('ordersList');
+  if (entries.length===0){ list.innerHTML='<p class="muted">Không có đơn nào.</p>'; return; }
+  list.innerHTML = entries.map(([id,o])=>{
+    const itemsTxt = o.items.map(it=>`${it.name} x${it.qty}`).join(', ');
+    const nextMap = {pending:'preparing', preparing:'ready', ready:'served'};
+    const next = nextMap[o.status];
+    const nextLabel = {preparing:'▶ Bắt đầu làm', ready:'✅ Sẵn sàng', served:'🍽️ Đã giao khách'}[next];
+    return `<div class="card order-card">
+      <div class="order-head">
+        <b>Bàn ${o.table}</b>
+        <span class="badge tag-${o.status}">${STATUS_STEPS.find(s=>s.k===o.status)?.label||o.status}</span>
+      </div>
+      <div class="order-items">${itemsTxt}</div>
+      ${o.note?`<div class="muted">Ghi chú: ${o.note}</div>`:''}
+      <div class="muted">Tổng: ${money(o.total)} • ${new Date(Number(o.createdAt)).toLocaleTimeString('vi-VN')}</div>
+      <div class="order-actions">
+        ${next?`<button class="btn btn-blue btn-sm" onclick="setOrderStatus('${id}','${next}')">${nextLabel}</button>`:''}
+        ${o.status!=='cancelled' && o.status!=='served' ?`<button class="btn btn-outline btn-sm" onclick="setOrderStatus('${id}','cancelled')">Hủy đơn</button>`:''}
+      </div>
+    </div>`;
+  }).join('');
+}
+async function setOrderStatus(id, status){
+  await apiPost({action:'updateOrderStatus', id, status});
+  fetchAll();
+}
+
+/* ---- MENU MGMT ---- */
+function renderMenuAdmin(){
+  const list = document.getElementById('menuAdminList');
+  const entries = Object.entries(menuItems);
+  if (entries.length===0){ list.innerHTML='<p class="muted">Chưa có món nào.</p>'; return; }
+  list.innerHTML = entries.map(([id,m])=>`
+    <div class="list-row">
+      <div><b>${m.name}</b><br><span class="muted">${money(m.price)} • ${m.category||''} ${m.available===false||m.available==='FALSE'?'• Đang tắt bán':''}</span></div>
+      <button class="icon-btn" onclick='openMenuItemModal("${id}")'>✏️</button>
+    </div>`).join('');
+}
+function openMenuItemModal(id){
+  document.getElementById('miId').value = id||'';
+  const m = id ? menuItems[id] : {};
+  document.getElementById('miName').value = m?.name||'';
+  document.getElementById('miPrice').value = m?.price||'';
+  document.getElementById('miCat').value = m?.category||'';
+  document.getElementById('miAvail').checked = !(m?.available===false || m?.available==='FALSE');
+  document.getElementById('miDeleteBtn').style.display = id ? 'block':'none';
+  document.getElementById('modalMenuItem').classList.add('active');
+}
+async function saveMenuItem(){
+  const id = document.getElementById('miId').value;
+  const data = {
+    action:'saveMenuItem', id: id||undefined,
+    name: document.getElementById('miName').value.trim(),
+    price: parseFloat(document.getElementById('miPrice').value)||0,
+    category: document.getElementById('miCat').value.trim()||'Khác',
+    available: document.getElementById('miAvail').checked
+  };
+  if (!data.name) return alert('Nhập tên món!');
+  await apiPost(data);
+  closeModal('modalMenuItem');
+  fetchAll();
+}
+async function deleteMenuItem(){
+  const id = document.getElementById('miId').value;
+  if (id && confirm('Xóa món này?')) { await apiPost({action:'deleteMenuItem', id}); fetchAll(); }
+  closeModal('modalMenuItem');
+}
+
+/* ---- INVENTORY ---- */
+function renderInventory(){
+  const list = document.getElementById('invList');
+  const entries = Object.entries(inventoryItems);
+  if (entries.length===0){ list.innerHTML='<p class="muted">Chưa có nguyên liệu nào.</p>'; return; }
+  list.innerHTML = entries.map(([id,it])=>{
+    const low = Number(it.qty) <= Number(it.minQty||0);
+    return `<div class="list-row">
+      <div><b>${it.name}</b><br><span class="${low?'stock-low':'muted'}">${it.qty} ${it.unit||''} ${low?'⚠️ Sắp hết':''}</span></div>
+      <button class="icon-btn" onclick='openInvModal("${id}")'>✏️</button>
+    </div>`;
+  }).join('');
+}
+function openInvModal(id){
+  document.getElementById('invId').value = id||'';
+  const it = id ? inventoryItems[id] : {};
+  document.getElementById('invName').value = it?.name||'';
+  document.getElementById('invQty').value = it?.qty??'';
+  document.getElementById('invUnit').value = it?.unit||'';
+  document.getElementById('invMin').value = it?.minQty??'';
+  document.getElementById('invDeleteBtn').style.display = id ? 'block':'none';
+  document.getElementById('modalInv').classList.add('active');
+}
+async function saveInvItem(){
+  const id = document.getElementById('invId').value;
+  const data = {
+    action:'saveInventoryItem', id: id||undefined,
+    name: document.getElementById('invName').value.trim(),
+    qty: parseFloat(document.getElementById('invQty').value)||0,
+    unit: document.getElementById('invUnit').value.trim(),
+    minQty: parseFloat(document.getElementById('invMin').value)||0
+  };
+  if (!data.name) return alert('Nhập tên nguyên liệu!');
+  await apiPost(data);
+  closeModal('modalInv');
+  fetchAll();
+}
+async function deleteInvItem(){
+  const id = document.getElementById('invId').value;
+  if (id && confirm('Xóa nguyên liệu này?')) { await apiPost({action:'deleteInventoryItem', id}); fetchAll(); }
+  closeModal('modalInv');
+}
+
+/* ---- STOCKTAKE ---- */
+async function loadStocktake(){
+  const date = document.getElementById('stockDate').value || todayStr();
+  const res = await apiGet({action:'getStocktake', date});
+  const saved = {};
+  (res.stocktake||[]).forEach(s=> saved[s.itemId]=s);
+  const list = document.getElementById('stockList');
+  const entries = Object.entries(inventoryItems);
+  if (entries.length===0){ list.innerHTML = '<p class="muted">Chưa có nguyên liệu trong kho để kiểm kê.</p>'; return; }
+  list.innerHTML = entries.map(([id,it])=>{
+    const actual = saved[id]?.actualQty ?? '';
+    return `<div class="list-row">
+      <div><b>${it.name}</b><br><span class="muted">Hệ thống: ${it.qty} ${it.unit||''}</span></div>
+      <input type="number" style="width:90px" data-inv="${id}" class="stockActual" value="${actual}" placeholder="Thực tế">
+    </div>`;
+  }).join('');
+}
+async function saveStocktake(){
+  const date = document.getElementById('stockDate').value || todayStr();
+  const inputs = document.querySelectorAll('.stockActual');
+  const entries = [];
+  inputs.forEach(inp=>{
+    const actual = parseFloat(inp.value);
+    if (isNaN(actual)) return;
+    const id = inp.dataset.inv;
+    entries.push({ itemId:id, systemQty: Number(inventoryItems[id]?.qty)||0, actualQty: actual });
+  });
+  await apiPost({action:'saveStocktake', date, entries});
+  await fetchAll();
+  alert('Đã lưu phiếu kiểm kê ngày '+date+'!');
+}
+
+/* ---- STAFF & CHECK-IN (admin side) ---- */
+function renderStaffList(){
+  const list = document.getElementById('staffList');
+  const entries = Object.entries(staffList);
+  if (entries.length===0){ list.innerHTML='<p class="muted">Chưa có nhân viên.</p>'; return; }
+  list.innerHTML = entries.map(([id,s])=>`
+    <div class="list-row">
+      <div><b>${s.name}</b><br><span class="muted">PIN: ${s.pin}</span></div>
+      <button class="icon-btn" onclick="deleteStaff('${id}')">🗑️</button>
+    </div>`).join('');
+}
+async function addStaff(){
+  const name = document.getElementById('newStaffName').value.trim();
+  const pin = document.getElementById('newStaffPin').value.trim();
+  if (!name || !pin) return alert('Nhập đủ tên và PIN!');
+  await apiPost({action:'addStaff', name, pin});
+  document.getElementById('newStaffName').value='';
+  document.getElementById('newStaffPin').value='';
+  fetchAll();
+}
+async function deleteStaff(id){
+  if (confirm('Xóa nhân viên này?')) { await apiPost({action:'deleteStaff', id}); fetchAll(); }
+}
+async function loadCheckinHistory(){
+  const date = document.getElementById('checkinDate').value || todayStr();
+  const res = await apiGet({action:'getCheckin', date});
+  const list = document.getElementById('checkinHistory');
+  const entries = res.checkin || [];
+  if (entries.length===0){ list.innerHTML='<p class="muted">Chưa có ai chấm công ngày này.</p>'; return; }
+  list.innerHTML = entries.map(c=>{
+    const inT = c.checkIn ? new Date(Number(c.checkIn)).toLocaleTimeString('vi-VN') : '--';
+    const outT = c.checkOut ? new Date(Number(c.checkOut)).toLocaleTimeString('vi-VN') : '--';
+    let hours = '';
+    if (c.checkIn && c.checkOut) hours = ((Number(c.checkOut)-Number(c.checkIn))/3600000).toFixed(1)+'h';
+    return `<div class="list-row"><div><b>${c.name}</b></div><span class="muted">Vào: ${inT} • Ra: ${outT} ${hours?('• '+hours):''}</span></div>`;
+  }).join('');
+}
+
+/* ---- STAFF CHECK-IN SCREEN (public link ?checkin=1) ---- */
+function showCheckinScreen(){
+  hideAllScreens();
+  document.getElementById('scr-checkin').classList.remove('hidden');
+  renderCheckinStaffSelect();
+}
+function renderCheckinStaffSelect(){
+  const sel = document.getElementById('ckStaffSelect');
+  if (!sel) return;
+  sel.innerHTML = Object.entries(staffList).map(([id,s])=>`<option value="${id}">${s.name}</option>`).join('');
+}
+function staffAuth(){
+  const id = document.getElementById('ckStaffSelect').value;
+  const pin = document.getElementById('ckPin').value.trim();
+  const s = staffList[id];
+  if (!s || String(s.pin) !== pin){ alert('Sai PIN nhân viên!'); return null; }
+  return {id, name:s.name};
+}
+async function staffCheckIn(){
+  const auth = staffAuth(); if(!auth) return;
+  await apiPost({action:'checkIn', staffId:auth.id, name:auth.name, date: todayStr()});
+  document.getElementById('ckStatus').textContent = '✅ '+auth.name+' đã check-in lúc '+new Date().toLocaleTimeString('vi-VN');
+}
+async function staffCheckOut(){
+  const auth = staffAuth(); if(!auth) return;
+  const res = await apiPost({action:'checkOut', staffId:auth.id, date: todayStr()});
+  if (res.ok) document.getElementById('ckStatus').textContent = '🚪 '+auth.name+' đã check-out lúc '+new Date().toLocaleTimeString('vi-VN');
+  else document.getElementById('ckStatus').textContent = '⚠️ ' + (res.error||'Lỗi');
+}
+
+/* ---- CỔNG NGẦM SANG APP VÍ ---- */
+function openWallet(){
+  const url = (settings.walletUrl || '').trim();
+  if (!url) return; // chưa cấu hình -> im lặng, không lộ ra ngoài
+  window.open(url, '_blank');
+}
+async function saveWalletUrl(){
+  await apiPost({action:'saveSettings', walletUrl: document.getElementById('setWalletUrl').value.trim()});
+  fetchAll();
+  alert('Đã lưu link app Ví!');
+}
+
+/* ---- SETTINGS ---- */
+async function saveRestName(){
+  await apiPost({action:'saveSettings', restaurantName: document.getElementById('setRestName').value.trim()});
+  fetchAll();
+  alert('Đã lưu tên quán!');
+}
+async function saveSplashSettings(){
+  await apiPost({
+    action:'saveSettings',
+    restaurantAddress: document.getElementById('setRestAddr').value.trim(),
+    restaurantTagline: document.getElementById('setRestTagline').value.trim(),
+    splashLogo1: document.getElementById('setLogo1').value.trim(),
+    splashLogo2: document.getElementById('setLogo2').value.trim(),
+    splashLogo3: document.getElementById('setLogo3').value.trim()
+  });
+  fetchAll();
+  alert('Đã lưu trang chào!');
+}
+function useMyLocationForRestaurant(){
+  const st = document.getElementById('restLocStatus');
+  if (!navigator.geolocation){ st.textContent = '⚠️ Thiết bị không hỗ trợ định vị.'; return; }
+  st.textContent = 'Đang lấy vị trí...';
+  navigator.geolocation.getCurrentPosition(
+    pos => {
+      document.getElementById('setRestLat').value = pos.coords.latitude;
+      document.getElementById('setRestLng').value = pos.coords.longitude;
+      st.textContent = '✅ Đã lấy vị trí hiện tại (độ chính xác ~' + Math.round(pos.coords.accuracy) + 'm). Bấm "Lưu vị trí quán" để lưu lại.';
+    },
+    err => { st.textContent = '⚠️ Không lấy được vị trí: ' + err.message; },
+    { enableHighAccuracy:true, timeout:10000 }
+  );
+}
+async function saveRestaurantLocation(){
+  const lat = document.getElementById('setRestLat').value.trim();
+  const lng = document.getElementById('setRestLng').value.trim();
+  if (!lat || !lng) return alert('Vui lòng nhập/lấy tọa độ trước khi lưu!');
+  await apiPost({action:'saveSettings', restLat: lat, restLng: lng});
+  fetchAll();
+  alert('Đã lưu vị trí quán!');
+}
+async function changeStaffPin(){
+  const p = document.getElementById('setNewStaffPin').value.trim();
+  if (p.length<4) return alert('PIN phải từ 4 số trở lên!');
+  await apiPost({action:'saveSettings', staffPin: p});
+  document.getElementById('setNewStaffPin').value='';
+  alert('Đã đổi PIN nhân viên!');
+}
+async function changePin(){
+  const p = document.getElementById('setNewPin').value.trim();
+  if (p.length<4) return alert('PIN phải từ 4 số trở lên!');
+  await apiPost({action:'saveSettings', adminPin: p});
+  document.getElementById('setNewPin').value='';
+  alert('Đã đổi PIN chủ quán!');
+}
+
+function closeModal(id){ document.getElementById(id).classList.remove('active'); }
+
+/* ================= PWA: SERVICE WORKER ================= */
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('./sw.js').catch(err => console.error('SW lỗi:', err));
+  });
+}
+
+/* ================= START ================= */
+boot();
+</script>
+</body>
+</html>
