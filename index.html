@@ -380,7 +380,7 @@ label { font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase
    Dán "Web app URL" bạn lấy được sau khi Deploy Apps Script vào đây.
    Dạng: https://script.google.com/macros/s/AKfycb.../exec
 ==================================================================================== */
-const API_URL = "https://script.google.com/macros/s/AKfycbzsCEgrjPZM6q0OuxRniFuDCf5sywvs-CfJBy_A3bll9_zCKk-17k35BRH2LSPudl54JA/exec";
+const API_URL = "https://script.google.com/macros/s/AKfycbwVgugYtsWdO4MkqKCaYJaAecGOnxUTWdqhG75u5XFUwEDveK1UdfYZSd_sCngS9ajaYg/exec";
 
 const isConfigured = API_URL.indexOf('PASTE_') === -1 && API_URL.length > 10;
 if (!isConfigured) document.getElementById('configNotice').classList.remove('hidden');
@@ -1070,7 +1070,25 @@ async function changePin(){
 function closeModal(id){ document.getElementById(id).classList.remove('active'); }
 
 /* ================= PWA: SERVICE WORKER ================= */
-if ('serviceWorker' in navigator) {
+// Mở link kèm ?resetcache=1 (vd: https://<user>.github.io/quanan-app/?resetcache=1)
+// để ép xóa sạch service worker + cache cũ, dùng khi trình duyệt (đặc biệt Herond)
+// không tự cập nhật bản mới dù đã đổi CACHE_NAME trong sw.js.
+if (location.search.indexOf('resetcache=1') !== -1) {
+  (async () => {
+    try {
+      if ('serviceWorker' in navigator) {
+        const regs = await navigator.serviceWorker.getRegistrations();
+        for (const r of regs) await r.unregister();
+      }
+      if ('caches' in window) {
+        const names = await caches.keys();
+        for (const n of names) await caches.delete(n);
+      }
+    } catch (err) { console.error('Reset cache lỗi:', err); }
+    alert('Đã xóa cache & service worker cũ. Bấm OK để tải lại bản mới nhất.');
+    location.href = location.pathname;
+  })();
+} else if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
     navigator.serviceWorker.register('./sw.js').catch(err => console.error('SW lỗi:', err));
   });
