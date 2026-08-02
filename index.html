@@ -727,8 +727,14 @@ function checkStaffLocation(){
 }
 async function adminLogin(){
   const pin = document.getElementById('inpAdminPin').value.trim();
-  const res = await apiPost({action:'login', pin});
-  if (!res.ok) return alert('Sai mã PIN!');
+  let res;
+  try {
+    res = await apiPost({action:'login', pin});
+  } catch(err) {
+    console.error('Lỗi đăng nhập:', err);
+    return alert('Lỗi kết nối tới quán: ' + (err && err.message ? err.message : err));
+  }
+  if (!res || !res.ok) return alert('Sai mã PIN!');
   const role = res.role || 'staff';
   if (role !== 'admin'){
     const okLoc = await checkStaffLocation();
