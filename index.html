@@ -96,6 +96,38 @@ label { font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase
 .splash-cta-wrap { width:100%; max-width:340px; margin-top:30px; }
 .splash-cta { background:linear-gradient(135deg,#f97316,#ea580c); color:#fff; font-size:15px; box-shadow:0 6px 16px rgba(234,88,12,.35); }
 .splash-tagline { margin-top:24px; font-size:12px; color:#94a3b8; text-align:center; font-style:italic; }
+
+.upload-row { display:flex; gap:8px; align-items:center; margin-top:6px; }
+.upload-row input[type=file] { flex:1; padding:8px; font-size:12px; }
+.thumb { width:44px; height:44px; border-radius:8px; object-fit:cover; border:1.5px solid #cbd5e1; background:#f1f5f9; flex-shrink:0; }
+.thumb-lg { width:64px; height:64px; border-radius:10px; object-fit:cover; border:1.5px solid #cbd5e1; background:#f1f5f9; }
+.mi-thumb { width:44px; height:44px; border-radius:8px; object-fit:cover; margin-right:10px; flex-shrink:0; }
+.mi-row-main { display:flex; align-items:center; }
+.toggle-row { display:flex; align-items:center; gap:8px; margin-top:12px; }
+.toggle-row input[type=checkbox]{ width:auto; }
+.toggle-row label { margin:0; text-transform:none; font-size:13px; font-weight:600; color:#1e293b; }
+.subcard { background:#f8fafc; border:1px dashed #cbd5e1; border-radius:10px; padding:10px; margin-top:8px; }
+.dyn-row { display:flex; gap:6px; align-items:center; margin-top:6px; }
+.dyn-row input { flex:1; }
+.dyn-row .icon-btn { color:#dc2626; font-size:18px; }
+.tiny-btn { background:#eef2ff; color:#312e81; border:none; border-radius:8px; padding:7px 10px; font-size:12px; font-weight:700; cursor:pointer; margin-top:8px; }
+.mini-tags { display:flex; gap:4px; flex-wrap:wrap; margin-top:3px; }
+.mini-tag { font-size:10px; font-weight:700; color:#312e81; background:#e0e7ff; border-radius:6px; padding:2px 6px; }
+.spicy-picker { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+.spicy-opt { width:34px; height:34px; border-radius:50%; border:1.5px solid #cbd5e1; background:#fff; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; }
+.spicy-opt.active { background:#dc2626; border-color:#dc2626; color:#fff; }
+.opt-block { margin-top:14px; }
+.opt-title { font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase; margin-bottom:6px; }
+.size-opt { display:flex; align-items:center; gap:8px; padding:8px 10px; border:1.5px solid #cbd5e1; border-radius:8px; margin-bottom:6px; cursor:pointer; }
+.size-opt.active { border-color:#d97706; background:#fff7ed; }
+.topping-opt { display:flex; align-items:center; gap:8px; padding:6px 0; }
+.topping-opt input { width:auto; }
+.variant-desc { font-size:11px; color:#64748b; margin-top:2px; }
+textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; resize:vertical; }
+
+.splash-contact { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:18px; max-width:360px; }
+.contact-btn { display:flex; align-items:center; gap:6px; background:#fff; border:1.5px solid #e2e8f0; border-radius:20px; padding:8px 14px; font-size:12.5px; font-weight:700; color:#1e1b4b; text-decoration:none; box-shadow:0 2px 6px rgba(0,0,0,.06); }
+.contact-btn.fb { color:#1877f2; }
 </style>
 </head>
 <body>
@@ -118,6 +150,7 @@ label { font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase
     <div class="splash-cta-wrap">
       <button class="btn splash-cta" onclick="fromSplash()">Xem Menu &amp; Gọi Món</button>
     </div>
+    <div class="splash-contact" id="splashContact"></div>
     <p class="splash-tagline" id="splashTagline"></p>
   </div>
 
@@ -227,7 +260,10 @@ label { font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase
     </div>
 
     <div class="pad admin-tab hidden" id="tab-menu">
-      <button class="btn btn-primary" onclick="openMenuItemModal()">+ Thêm món mới</button>
+      <div class="row">
+        <button class="btn btn-primary" onclick="openMenuItemModal()">+ Thêm món mới</button>
+        <button class="btn btn-outline" onclick="openBulkImportModal()">📋 Nhập nhanh theo menu</button>
+      </div>
       <div id="menuAdminList" style="margin-top:12px"></div>
     </div>
 
@@ -281,13 +317,23 @@ label { font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase
         <input id="setRestAddr" placeholder="VD: 77 Phong Định Cảng, Nghệ An">
         <label>Câu khẩu hiệu (tagline)</label>
         <input id="setRestTagline" placeholder="VD: Phục vụ bằng cả trái tim.">
-        <label>Ảnh/logo 1 (dán link ảnh)</label>
+        <label>Ảnh/logo 1 (dán link ảnh hoặc tải từ máy)</label>
         <input id="setLogo1" placeholder="https://...">
-        <label>Ảnh/logo 2 (dán link ảnh)</label>
+        <div class="upload-row"><img class="thumb" id="setLogo1Prev"><input type="file" accept="image/*" onchange="uploadImageTo('setLogo1', this)"></div>
+        <label>Ảnh/logo 2 (dán link ảnh hoặc tải từ máy)</label>
         <input id="setLogo2" placeholder="https://...">
-        <label>Ảnh/logo 3 (dán link ảnh)</label>
+        <div class="upload-row"><img class="thumb" id="setLogo2Prev"><input type="file" accept="image/*" onchange="uploadImageTo('setLogo2', this)"></div>
+        <label>Ảnh/logo 3 (dán link ảnh hoặc tải từ máy)</label>
         <input id="setLogo3" placeholder="https://...">
-        <p class="muted" style="margin-top:6px">Chưa có link ảnh? Để trống - app sẽ tự hiện icon món ăn mặc định. Bạn có thể upload ảnh lên Google Drive/Imgur rồi lấy link công khai để dán vào đây.</p>
+        <div class="upload-row"><img class="thumb" id="setLogo3Prev"><input type="file" accept="image/*" onchange="uploadImageTo('setLogo3', this)"></div>
+        <p class="muted" style="margin-top:6px">Có thể dán link ảnh công khai (Google Drive/Imgur...) HOẶC bấm "Chọn tệp" để tải ảnh thẳng từ điện thoại/máy tính (ảnh sẽ tự nén nhỏ lại). Để trống cả 2 - app tự hiện icon món ăn mặc định.</p>
+
+        <label style="margin-top:16px">📞 Số điện thoại liên hệ (tối đa 5, để trống nếu không dùng)</label>
+        <div id="setPhoneRows"></div>
+
+        <label style="margin-top:16px">📘 Link Facebook (tối đa 5, để trống nếu không dùng)</label>
+        <div id="setFbRows"></div>
+
         <button class="btn btn-primary" style="margin-top:10px" onclick="saveSplashSettings()">Lưu trang chào</button>
       </div>
       <div class="card">
@@ -333,11 +379,95 @@ label { font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase
       <div class="card-title">Món ăn</div>
       <input type="hidden" id="miId">
       <label>Tên món</label><input id="miName">
-      <label>Giá (đ)</label><input id="miPrice" type="number">
+      <label>Giá mặc định (đ) <span class="muted" style="text-transform:none">- nếu có size riêng thì giá size sẽ dùng thay giá này</span></label><input id="miPrice" type="number">
       <label>Danh mục</label><input id="miCat" placeholder="VD: Món chính, Nước uống...">
       <label style="display:flex;align-items:center;gap:8px;margin-top:12px"><input type="checkbox" id="miAvail" style="width:auto" checked> Đang bán</label>
+
+      <label>Hình món</label>
+      <div class="upload-row"><img class="thumb" id="miImagePrev"><input id="miImage" placeholder="https://... (dán link ảnh)"></div>
+      <div class="upload-row"><input type="file" accept="image/*" onchange="uploadImageTo('miImage', this)"></div>
+
+      <div class="toggle-row"><input type="checkbox" id="miHasSize" onchange="toggleMiBlock('miSizeBlock', this.checked)"><label>Có nhiều size (M/L...)</label></div>
+      <div class="subcard hidden" id="miSizeBlock">
+        <div id="miSizeRows"></div>
+        <button type="button" class="tiny-btn" onclick="addSizeRow()">+ Thêm size</button>
+      </div>
+
+      <div class="toggle-row"><input type="checkbox" id="miHasSpicy" onchange="toggleMiBlock('miSpicyBlock', this.checked)"><label>Có chọn độ cay</label></div>
+      <div class="subcard hidden" id="miSpicyBlock">
+        <label>Mức cay tối đa (0 = không cay ... thường là 7)</label>
+        <input id="miSpicyMax" type="number" min="1" max="10" value="7">
+      </div>
+
+      <div class="toggle-row"><input type="checkbox" id="miHasTopping" onchange="toggleMiBlock('miToppingBlock', this.checked)"><label>Có topping thêm</label></div>
+      <div class="subcard hidden" id="miToppingBlock">
+        <div id="miToppingRows"></div>
+        <button type="button" class="tiny-btn" onclick="addToppingRow()">+ Thêm topping</button>
+      </div>
+
       <button class="btn btn-primary" style="margin-top:14px" onclick="saveMenuItem()">Lưu</button>
       <button class="btn btn-red" style="margin-top:8px" id="miDeleteBtn" onclick="deleteMenuItem()">Xóa món này</button>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="modalBulkImport">
+    <div class="modal-box">
+      <div class="modal-close" onclick="closeModal('modalBulkImport')">✕ Đóng</div>
+      <div class="card-title">📋 Nhập nhanh nhiều món theo menu</div>
+      <p class="muted">Dán danh sách món theo mẫu bên dưới rồi bấm Nhập. Mỗi dòng bắt đầu bằng <b>##</b> là 1 danh mục; các dòng sau là <b>Tên món - Giá</b>. Giá viết "25k" = 25.000đ. Món có nhiều size viết: <b>Tên món - M:12k, L:15k</b>.</p>
+      <textarea class="bulk-ta" id="bulkImportText" placeholder="## Trà trái cây
+Trà đào - 25k
+Trà nhiệt đới - 25k
+
+## Rau má
+Truyền thống - M:12k, L:15k
+Đậu xanh - M:15k, L:20k
+
+## Mì cay
+Mì cay xúc xích - 30k
+Mì cay gà - 40k"></textarea>
+      <p class="muted" id="bulkImportPreview" style="margin-top:8px"></p>
+      <button class="btn btn-primary" style="margin-top:10px" onclick="runBulkImport()">Nhập vào thực đơn</button>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="modalItemOptions">
+    <div class="modal-box">
+      <div class="modal-close" onclick="closeModal('modalItemOptions')">✕ Đóng</div>
+      <div class="mi-row-main">
+        <img class="thumb-lg" id="ioImage" style="display:none">
+        <div>
+          <div class="card-title" id="ioName" style="margin-bottom:2px"></div>
+          <div class="mi-price" id="ioBasePrice"></div>
+        </div>
+      </div>
+      <input type="hidden" id="ioItemId">
+
+      <div class="opt-block hidden" id="ioSizeBlock">
+        <div class="opt-title">Chọn size</div>
+        <div id="ioSizeList"></div>
+      </div>
+
+      <div class="opt-block hidden" id="ioSpicyBlock">
+        <div class="opt-title">Chọn độ cay</div>
+        <div class="spicy-picker" id="ioSpicyList"></div>
+      </div>
+
+      <div class="opt-block hidden" id="ioToppingBlock">
+        <div class="opt-title">Topping thêm</div>
+        <div id="ioToppingList"></div>
+      </div>
+
+      <div class="opt-block">
+        <div class="opt-title">Số lượng</div>
+        <div class="qty-ctrl">
+          <button class="qty-btn" onclick="changeIoQty(-1)">−</button>
+          <span class="qty-num" id="ioQty">1</span>
+          <button class="qty-btn" onclick="changeIoQty(1)">+</button>
+        </div>
+      </div>
+
+      <button class="btn btn-primary" style="margin-top:14px" onclick="confirmAddVariant()">Thêm vào giỏ · <span id="ioTotalPrice"></span></button>
     </div>
   </div>
 
@@ -388,6 +518,7 @@ if (!isConfigured) document.getElementById('configNotice').classList.remove('hid
 /* ================= STATE ================= */
 let currentTable = localStorage.getItem('qa_table') || '';
 let cart = {};
+let cartVariants = [];
 let menuItems = {};
 let ordersMap = {};
 let inventoryItems = {};
@@ -407,6 +538,48 @@ const STATUS_STEPS = [
 function money(n){ return (Number(n)||0).toLocaleString('vi-VN') + 'đ'; }
 function todayStr(){ return new Date().toISOString().split('T')[0]; }
 function toMap(arr){ const m={}; (arr||[]).forEach(x=>{ if(x.id) m[x.id]=x; }); return m; }
+function safeJSON(s, fallback){ try{ const v = typeof s==='string' ? JSON.parse(s) : s; return Array.isArray(v) ? v : fallback; }catch(e){ return fallback; } }
+function parseItemExtras(m){
+  const sizes = safeJSON(m && m.sizes, []);
+  const toppings = safeJSON(m && m.toppings, []);
+  const spicyMax = Number(m && m.spicyMax) || 0;
+  return { sizes, toppings, spicyMax };
+}
+function itemHasVariant(m){ const e = parseItemExtras(m); return e.sizes.length>0 || e.spicyMax>0 || e.toppings.length>0; }
+
+/* Nén ảnh chọn từ máy thành base64 nhỏ gọn rồi gán vào ô input (dùng chung cho logo & hình món) */
+function fileToCompressedDataURL(file, maxDim, quality){
+  return new Promise((resolve, reject)=>{
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('Không đọc được tệp'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('Không đọc được ảnh'));
+      img.onload = () => {
+        let w = img.width, h = img.height;
+        if (w > h && w > maxDim) { h = Math.round(h * maxDim / w); w = maxDim; }
+        else if (h > maxDim) { w = Math.round(w * maxDim / h); h = maxDim; }
+        const canvas = document.createElement('canvas');
+        canvas.width = w; canvas.height = h;
+        canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/jpeg', quality));
+      };
+      img.src = reader.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+async function uploadImageTo(targetInputId, fileInputEl){
+  const file = fileInputEl.files && fileInputEl.files[0];
+  if (!file) return;
+  try{
+    const dataUrl = await fileToCompressedDataURL(file, 480, 0.6);
+    document.getElementById(targetInputId).value = dataUrl;
+    const prev = document.getElementById(targetInputId + 'Prev');
+    if (prev) { prev.src = dataUrl; prev.style.display = 'block'; }
+  } catch(err){ alert('Không xử lý được ảnh này, thử ảnh khác nhé!'); }
+  finally { fileInputEl.value = ''; }
+}
 
 /* ================= API HELPERS ================= */
 async function apiGet(params){
@@ -447,9 +620,19 @@ function onDataUpdate(){
   document.getElementById('setLogo1').value = settings.splashLogo1 || '';
   document.getElementById('setLogo2').value = settings.splashLogo2 || '';
   document.getElementById('setLogo3').value = settings.splashLogo3 || '';
+  [1,2,3].forEach(i=>{
+    const url = settings['splashLogo'+i]; const prev = document.getElementById('setLogo'+i+'Prev');
+    if (url) { prev.src = url; prev.style.display='block'; } else { prev.style.display='none'; }
+  });
   document.getElementById('setWalletUrl').value = settings.walletUrl || '';
   document.getElementById('setRestLat').value = settings.restLat || '';
   document.getElementById('setRestLng').value = settings.restLng || '';
+  [1,2,3,4,5].forEach(i=>{
+    document.getElementById('setPhoneLabel'+i).value = settings['phoneLabel'+i] || '';
+    document.getElementById('setPhone'+i).value = settings['phone'+i] || '';
+    document.getElementById('setFbLabel'+i).value = settings['fbLabel'+i] || '';
+    document.getElementById('setFb'+i).value = settings['fb'+i] || '';
+  });
   if (!document.getElementById('scr-splash').classList.contains('hidden')) renderSplash();
   if (!document.getElementById('scr-menu').classList.contains('hidden')) renderMenu();
   if (!document.getElementById('scr-track').classList.contains('hidden')) renderTrackFromState();
@@ -472,6 +655,18 @@ function renderSplash(){
   wrap.innerHTML = logos.length
     ? logos.map(url => `<div class="splash-logo"><img src="${url}" alt=""></div>`).join('')
     : ['🍜','🥤','🍰'].map(e => `<div class="splash-logo splash-logo-emoji">${e}</div>`).join('');
+
+  const phoneBtns = [1,2,3,4,5].map(i=>{
+    const num = settings['phone'+i]; if (!num) return '';
+    const label = settings['phoneLabel'+i] || num;
+    return `<a class="contact-btn" href="tel:${num.replace(/\s+/g,'')}">📞 ${label}</a>`;
+  }).join('');
+  const fbBtns = [1,2,3,4,5].map(i=>{
+    const url = settings['fb'+i]; if (!url) return '';
+    const label = settings['fbLabel'+i] || ('Facebook' + (i>1?' '+i:''));
+    return `<a class="contact-btn fb" href="${url}" target="_blank" rel="noopener">📘 ${label}</a>`;
+  }).join('');
+  document.getElementById('splashContact').innerHTML = phoneBtns + fbBtns;
 }
 
 function startPolling(){
@@ -557,18 +752,29 @@ function filterMenuCat(el, cat){
   const list = document.getElementById('menuList');
   const entries = Object.entries(menuItems).filter(([id,m])=> (m.category||'Khác')===cat && m.available!==false && m.available!=='FALSE');
   if (entries.length===0){ list.innerHTML = '<p class="muted">Chưa có món trong danh mục này.</p>'; return; }
-  list.innerHTML = `<div class="card">` + entries.map(([id,m])=>`
+  list.innerHTML = `<div class="card">` + entries.map(([id,m])=>{
+    const img = m.image ? `<img class="mi-thumb" src="${m.image}">` : '';
+    const variant = itemHasVariant(m);
+    const ctrl = variant
+      ? `<button class="btn btn-primary btn-sm" onclick="openItemOptions('${id}')">Chọn</button>`
+      : `<div class="qty-ctrl">
+          <button class="qty-btn" onclick="changeQty('${id}',-1)">−</button>
+          <span class="qty-num" id="qtynum-${id}">${cart[id]||0}</span>
+          <button class="qty-btn" onclick="changeQty('${id}',1)">+</button>
+        </div>`;
+    return `
     <div class="menu-item">
-      <div>
-        <div class="mi-name">${m.name}</div>
-        <div class="mi-price">${money(m.price)}</div>
+      <div class="mi-row-main">
+        ${img}
+        <div>
+          <div class="mi-name">${m.name}</div>
+          <div class="mi-price">${variant ? 'từ ' : ''}${money(m.price)}</div>
+          ${variant ? `<div class="variant-desc">${variantCountInCart(id)>0 ? variantCountInCart(id)+' trong giỏ' : 'Có tuỳ chọn size/cay/topping'}</div>` : ''}
+        </div>
       </div>
-      <div class="qty-ctrl">
-        <button class="qty-btn" onclick="changeQty('${id}',-1)">−</button>
-        <span class="qty-num" id="qtynum-${id}">${cart[id]||0}</span>
-        <button class="qty-btn" onclick="changeQty('${id}',1)">+</button>
-      </div>
-    </div>`).join('') + `</div>`;
+      ${ctrl}
+    </div>`;
+  }).join('') + `</div>`;
 }
 
 function changeQty(id, delta){
@@ -579,10 +785,116 @@ function changeQty(id, delta){
   updateCartBar();
 }
 
+function variantCountInCart(id){ return cartVariants.filter(v=>v.id===id).reduce((s,v)=>s+v.qty,0); }
+
 function cartTotal(){
-  return Object.entries(cart).reduce((sum,[id,q])=> sum + (Number(menuItems[id]?.price)||0)*q, 0);
+  const simple = Object.entries(cart).reduce((sum,[id,q])=> sum + (Number(menuItems[id]?.price)||0)*q, 0);
+  const variants = cartVariants.reduce((sum,v)=> sum + v.unitPrice*v.qty, 0);
+  return simple + variants;
 }
-function cartCount(){ return Object.values(cart).reduce((a,b)=>a+b,0); }
+function cartCount(){
+  const simple = Object.values(cart).reduce((a,b)=>a+b,0);
+  const variants = cartVariants.reduce((s,v)=>s+v.qty,0);
+  return simple + variants;
+}
+
+/* ---- CUSTOMER: CHỌN SIZE / ĐỘ CAY / TOPPING ---- */
+let ioState = null;
+function openItemOptions(id){
+  const m = menuItems[id]; if (!m) return;
+  const extras = parseItemExtras(m);
+  ioState = { id, name:m.name, image:m.image||'', basePrice:Number(m.price)||0, sizes:extras.sizes, spicyMax:extras.spicyMax, toppings:extras.toppings,
+    selSize: extras.sizes[0] || null, selSpicy: 0, selToppings: [], qty: 1 };
+
+  document.getElementById('ioItemId').value = id;
+  document.getElementById('ioName').textContent = m.name;
+  const imgEl = document.getElementById('ioImage');
+  if (m.image) { imgEl.src = m.image; imgEl.style.display='block'; } else imgEl.style.display='none';
+  document.getElementById('ioQty').textContent = '1';
+
+  const sizeBlock = document.getElementById('ioSizeBlock');
+  if (extras.sizes.length){
+    sizeBlock.classList.remove('hidden');
+    document.getElementById('ioSizeList').innerHTML = extras.sizes.map((s,i)=>
+      `<div class="size-opt ${i===0?'active':''}" data-i="${i}" onclick="selectIoSize(${i})"><b>${s.name}</b><span class="muted" style="margin-left:auto">${money(s.price)}</span></div>`).join('');
+  } else sizeBlock.classList.add('hidden');
+
+  const spicyBlock = document.getElementById('ioSpicyBlock');
+  if (extras.spicyMax > 0){
+    spicyBlock.classList.remove('hidden');
+    let opts = ['<div class="spicy-opt active" data-l="0" onclick="selectIoSpicy(0)">0</div>'];
+    for (let i=1;i<=extras.spicyMax;i++) opts.push(`<div class="spicy-opt" data-l="${i}" onclick="selectIoSpicy(${i})">${i}</div>`);
+    document.getElementById('ioSpicyList').innerHTML = opts.join('');
+  } else spicyBlock.classList.add('hidden');
+
+  const topBlock = document.getElementById('ioToppingBlock');
+  if (extras.toppings.length){
+    topBlock.classList.remove('hidden');
+    document.getElementById('ioToppingList').innerHTML = extras.toppings.map((t,i)=>
+      `<label class="topping-opt"><input type="checkbox" onchange="toggleIoTopping(${i}, this.checked)"><span>${t.name}</span><span class="muted" style="margin-left:auto">+${money(t.price)}</span></label>`).join('');
+  } else topBlock.classList.add('hidden');
+
+  updateIoTotal();
+  document.getElementById('modalItemOptions').classList.add('active');
+}
+function selectIoSize(i){
+  ioState.selSize = ioState.sizes[i];
+  document.querySelectorAll('#ioSizeList .size-opt').forEach((el,idx)=>el.classList.toggle('active', idx===i));
+  updateIoTotal();
+}
+function selectIoSpicy(level){
+  ioState.selSpicy = level;
+  document.querySelectorAll('#ioSpicyList .spicy-opt').forEach(el=>el.classList.toggle('active', Number(el.dataset.l)===level));
+}
+function toggleIoTopping(i, checked){
+  const t = ioState.toppings[i];
+  ioState.selToppings = ioState.selToppings.filter(x=>x.name!==t.name);
+  if (checked) ioState.selToppings.push(t);
+  updateIoTotal();
+}
+function changeIoQty(delta){
+  ioState.qty = Math.max(1, ioState.qty + delta);
+  document.getElementById('ioQty').textContent = ioState.qty;
+  updateIoTotal();
+}
+function ioUnitPrice(){
+  const base = ioState.selSize ? Number(ioState.selSize.price)||0 : ioState.basePrice;
+  const toppingSum = ioState.selToppings.reduce((s,t)=>s+(Number(t.price)||0),0);
+  return base + toppingSum;
+}
+function updateIoTotal(){
+  document.getElementById('ioBasePrice').textContent = money(ioState.selSize ? ioState.selSize.price : ioState.basePrice);
+  document.getElementById('ioTotalPrice').textContent = money(ioUnitPrice() * ioState.qty);
+}
+function confirmAddVariant(){
+  const unitPrice = ioUnitPrice();
+  const key = [ioState.id, ioState.selSize?ioState.selSize.name:'', ioState.selSpicy, ioState.selToppings.map(t=>t.name).sort().join(',')].join('|');
+  const existing = cartVariants.find(v=>v.key===key);
+  if (existing) existing.qty += ioState.qty;
+  else cartVariants.push({
+    key, id: ioState.id, name: ioState.name,
+    size: ioState.selSize ? ioState.selSize.name : '',
+    spicy: ioState.spicyMax>0 ? ioState.selSpicy : null,
+    toppings: ioState.selToppings.map(t=>t.name),
+    qty: ioState.qty, unitPrice
+  });
+  closeModal('modalItemOptions');
+  renderMenu();
+  updateCartBar();
+}
+function variantLabel(v){
+  const parts = [];
+  if (v.size) parts.push('size ' + v.size);
+  if (v.spicy!==null && v.spicy!==undefined) parts.push('cay ' + v.spicy);
+  if (v.toppings && v.toppings.length) parts.push('+' + v.toppings.join(', +'));
+  return parts.length ? v.name + ' (' + parts.join(' · ') + ')' : v.name;
+}
+function changeVariantQty(key, delta){
+  const v = cartVariants.find(x=>x.key===key); if (!v) return;
+  v.qty += delta;
+  if (v.qty<=0) cartVariants = cartVariants.filter(x=>x.key!==key);
+  showCart(); updateCartBar();
+}
 
 function updateCartBar(){
   const bar = document.getElementById('cartBar');
@@ -599,7 +911,7 @@ function showCart(){
   document.getElementById('scr-cart').classList.remove('hidden');
   document.getElementById('cartTableNo').textContent = currentTable;
   const list = document.getElementById('cartList');
-  list.innerHTML = Object.entries(cart).map(([id,q])=>{
+  const simpleHtml = Object.entries(cart).map(([id,q])=>{
     const m = menuItems[id]; if(!m) return '';
     return `<div class="menu-item">
       <div><div class="mi-name">${m.name}</div><div class="mi-price">${money(m.price)} x ${q}</div></div>
@@ -609,6 +921,15 @@ function showCart(){
         <button class="qty-btn" onclick="changeQty('${id}',1);showCart()">+</button>
       </div></div>`;
   }).join('');
+  const variantHtml = cartVariants.map(v=>`
+    <div class="menu-item">
+      <div><div class="mi-name">${variantLabel(v)}</div><div class="mi-price">${money(v.unitPrice)} x ${v.qty}</div></div>
+      <div class="qty-ctrl">
+        <button class="qty-btn" onclick="changeVariantQty('${v.key}',-1)">−</button>
+        <span class="qty-num">${v.qty}</span>
+        <button class="qty-btn" onclick="changeVariantQty('${v.key}',1)">+</button>
+      </div></div>`).join('');
+  list.innerHTML = simpleHtml + variantHtml;
   document.getElementById('cartTotal').textContent = money(cartTotal());
 }
 
@@ -616,7 +937,9 @@ async function submitOrder(){
   if (cartCount()===0) return alert('Giỏ hàng trống!');
   const btn = document.getElementById('btnSubmitOrder');
   btn.disabled = true; btn.textContent = 'Đang gửi...';
-  const items = Object.entries(cart).map(([id,q])=>({id, name:menuItems[id].name, price:menuItems[id].price, qty:q}));
+  const simpleItems = Object.entries(cart).map(([id,q])=>({id, name:menuItems[id].name, price:menuItems[id].price, qty:q}));
+  const variantItems = cartVariants.map(v=>({id:v.id, name:variantLabel(v), price:v.unitPrice, qty:v.qty, size:v.size, spicy:v.spicy, toppings:v.toppings}));
+  const items = simpleItems.concat(variantItems);
   try{
     const res = await apiPost({
       action:'addOrder', table: currentTable, items, total: cartTotal(),
@@ -626,6 +949,7 @@ async function submitOrder(){
       currentOrderId = res.id;
       localStorage.setItem('qa_orderId', currentOrderId);
       cart = {};
+      cartVariants = [];
       document.getElementById('cartNote').value='';
       await fetchAll();
       showTrack();
@@ -827,30 +1151,100 @@ function renderMenuAdmin(){
   const list = document.getElementById('menuAdminList');
   const entries = Object.entries(menuItems);
   if (entries.length===0){ list.innerHTML='<p class="muted">Chưa có món nào.</p>'; return; }
-  list.innerHTML = entries.map(([id,m])=>`
+  list.innerHTML = entries.map(([id,m])=>{
+    const e = parseItemExtras(m);
+    const tags = [];
+    if (m.image) tags.push('<span class="mini-tag">🖼️ Ảnh</span>');
+    if (e.sizes.length) tags.push(`<span class="mini-tag">📏 ${e.sizes.length} size</span>`);
+    if (e.spicyMax>0) tags.push(`<span class="mini-tag">🌶️ 0-${e.spicyMax}</span>`);
+    if (e.toppings.length) tags.push(`<span class="mini-tag">➕ ${e.toppings.length} topping</span>`);
+    return `
     <div class="list-row">
-      <div><b>${m.name}</b><br><span class="muted">${money(m.price)} • ${m.category||''} ${m.available===false||m.available==='FALSE'?'• Đang tắt bán':''}</span></div>
+      <div class="mi-row-main">
+        ${m.image?`<img class="mi-thumb" src="${m.image}">`:''}
+        <div><b>${m.name}</b><br><span class="muted">${money(m.price)} • ${m.category||''} ${m.available===false||m.available==='FALSE'?'• Đang tắt bán':''}</span>
+        ${tags.length?`<div class="mini-tags">${tags.join('')}</div>`:''}
+        </div>
+      </div>
       <button class="icon-btn" onclick='openMenuItemModal("${id}")'>✏️</button>
+    </div>`;
+  }).join('');
+}
+
+let miSizesArr = [], miToppingsArr = [];
+
+function toggleMiBlock(blockId, show){ document.getElementById(blockId).classList.toggle('hidden', !show); }
+
+function renderMiSizeRows(){
+  document.getElementById('miSizeRows').innerHTML = miSizesArr.map((s,i)=>`
+    <div class="dyn-row">
+      <input placeholder="Tên size (VD: M)" value="${s.name||''}" oninput="miSizesArr[${i}].name=this.value">
+      <input type="number" placeholder="Giá" value="${s.price||''}" oninput="miSizesArr[${i}].price=parseFloat(this.value)||0" style="max-width:110px">
+      <button type="button" class="icon-btn" onclick="removeSizeRow(${i})">✕</button>
     </div>`).join('');
 }
+function addSizeRow(){ miSizesArr.push({name:'', price:0}); renderMiSizeRows(); }
+function removeSizeRow(i){ miSizesArr.splice(i,1); renderMiSizeRows(); }
+
+function renderMiToppingRows(){
+  document.getElementById('miToppingRows').innerHTML = miToppingsArr.map((t,i)=>`
+    <div class="dyn-row">
+      <input placeholder="Tên topping (VD: Trân châu)" value="${t.name||''}" oninput="miToppingsArr[${i}].name=this.value">
+      <input type="number" placeholder="Giá thêm" value="${t.price||''}" oninput="miToppingsArr[${i}].price=parseFloat(this.value)||0" style="max-width:110px">
+      <button type="button" class="icon-btn" onclick="removeToppingRow(${i})">✕</button>
+    </div>`).join('');
+}
+function addToppingRow(){ miToppingsArr.push({name:'', price:0}); renderMiToppingRows(); }
+function removeToppingRow(i){ miToppingsArr.splice(i,1); renderMiToppingRows(); }
+
 function openMenuItemModal(id){
   document.getElementById('miId').value = id||'';
   const m = id ? menuItems[id] : {};
+  const e = parseItemExtras(m||{});
   document.getElementById('miName').value = m?.name||'';
   document.getElementById('miPrice').value = m?.price||'';
   document.getElementById('miCat').value = m?.category||'';
   document.getElementById('miAvail').checked = !(m?.available===false || m?.available==='FALSE');
+  document.getElementById('miImage').value = m?.image||'';
+  const prev = document.getElementById('miImagePrev');
+  if (m?.image) { prev.src = m.image; prev.style.display='block'; } else prev.style.display='none';
+
+  miSizesArr = e.sizes.length ? JSON.parse(JSON.stringify(e.sizes)) : [];
+  document.getElementById('miHasSize').checked = miSizesArr.length>0;
+  toggleMiBlock('miSizeBlock', miSizesArr.length>0);
+  renderMiSizeRows();
+
+  document.getElementById('miHasSpicy').checked = e.spicyMax>0;
+  toggleMiBlock('miSpicyBlock', e.spicyMax>0);
+  document.getElementById('miSpicyMax').value = e.spicyMax>0 ? e.spicyMax : 7;
+
+  miToppingsArr = e.toppings.length ? JSON.parse(JSON.stringify(e.toppings)) : [];
+  document.getElementById('miHasTopping').checked = miToppingsArr.length>0;
+  toggleMiBlock('miToppingBlock', miToppingsArr.length>0);
+  renderMiToppingRows();
+
   document.getElementById('miDeleteBtn').style.display = id ? 'block':'none';
   document.getElementById('modalMenuItem').classList.add('active');
 }
 async function saveMenuItem(){
   const id = document.getElementById('miId').value;
+  const hasSize = document.getElementById('miHasSize').checked;
+  const hasSpicy = document.getElementById('miHasSpicy').checked;
+  const hasTopping = document.getElementById('miHasTopping').checked;
+  const sizes = hasSize ? miSizesArr.filter(s=>s.name && s.name.trim()) : [];
+  const toppings = hasTopping ? miToppingsArr.filter(t=>t.name && t.name.trim()) : [];
+  const spicyMax = hasSpicy ? (parseInt(document.getElementById('miSpicyMax').value)||7) : 0;
+
   const data = {
     action:'saveMenuItem', id: id||undefined,
     name: document.getElementById('miName').value.trim(),
     price: parseFloat(document.getElementById('miPrice').value)||0,
     category: document.getElementById('miCat').value.trim()||'Khác',
-    available: document.getElementById('miAvail').checked
+    available: document.getElementById('miAvail').checked,
+    image: document.getElementById('miImage').value.trim(),
+    sizes: JSON.stringify(sizes),
+    spicyMax,
+    toppings: JSON.stringify(toppings)
   };
   if (!data.name) return alert('Nhập tên món!');
   await apiPost(data);
@@ -861,6 +1255,59 @@ async function deleteMenuItem(){
   const id = document.getElementById('miId').value;
   if (id && confirm('Xóa món này?')) { await apiPost({action:'deleteMenuItem', id}); fetchAll(); }
   closeModal('modalMenuItem');
+}
+
+/* ---- NHẬP NHANH THEO MENU ---- */
+function openBulkImportModal(){
+  document.getElementById('bulkImportPreview').textContent = '';
+  document.getElementById('modalBulkImport').classList.add('active');
+}
+function parseMoneyToken(tok){
+  tok = tok.trim().toLowerCase().replace(/đ/g,'').replace(/\./g,'').replace(/,/g,'').trim();
+  const mult = tok.endsWith('k') ? 1000 : 1;
+  const num = parseFloat(tok.replace('k',''));
+  return isNaN(num) ? 0 : num*mult;
+}
+function parseBulkMenu(text){
+  const items = [];
+  let cat = 'Khác';
+  text.split('\n').forEach(raw=>{
+    const line = raw.trim();
+    if (!line) return;
+    if (line.startsWith('##') || line.startsWith('==')) { cat = line.replace(/^#+|=+/g,'').trim() || 'Khác'; return; }
+    const idx = line.lastIndexOf('-');
+    if (idx < 0) return;
+    const name = line.slice(0, idx).trim();
+    const priceSpec = line.slice(idx+1).trim();
+    if (!name || !priceSpec) return;
+    if (/[a-zA-ZÀ-ỹ]\s*:/.test(priceSpec) && priceSpec.includes(',')) {
+      // dạng size: "M:12k, L:15k"
+      const sizes = priceSpec.split(',').map(p=>{
+        const [sn, sp] = p.split(':');
+        return sn && sp ? { name: sn.trim(), price: parseMoneyToken(sp) } : null;
+      }).filter(Boolean);
+      if (sizes.length) items.push({ name, category:cat, price: sizes[0].price, sizes });
+    } else {
+      items.push({ name, category:cat, price: parseMoneyToken(priceSpec), sizes: [] });
+    }
+  });
+  return items;
+}
+async function runBulkImport(){
+  const text = document.getElementById('bulkImportText').value;
+  const items = parseBulkMenu(text);
+  if (!items.length) { alert('Không nhận diện được món nào, kiểm tra lại định dạng.'); return; }
+  if (!confirm(`Sẽ thêm ${items.length} món mới vào thực đơn. Tiếp tục?`)) return;
+  document.getElementById('bulkImportPreview').textContent = 'Đang nhập...';
+  for (const it of items){
+    await apiPost({
+      action:'saveMenuItem', name: it.name, price: it.price, category: it.category,
+      available: true, image: '', sizes: JSON.stringify(it.sizes||[]), spicyMax: 0, toppings: JSON.stringify([])
+    });
+  }
+  document.getElementById('bulkImportPreview').textContent = `Đã nhập ${items.length} món!`;
+  await fetchAll();
+  setTimeout(()=>closeModal('modalBulkImport'), 800);
 }
 
 /* ---- INVENTORY ---- */
@@ -1025,14 +1472,21 @@ async function saveRestName(){
   alert('Đã lưu tên quán!');
 }
 async function saveSplashSettings(){
-  await apiPost({
+  const payload = {
     action:'saveSettings',
     restaurantAddress: document.getElementById('setRestAddr').value.trim(),
     restaurantTagline: document.getElementById('setRestTagline').value.trim(),
     splashLogo1: document.getElementById('setLogo1').value.trim(),
     splashLogo2: document.getElementById('setLogo2').value.trim(),
     splashLogo3: document.getElementById('setLogo3').value.trim()
+  };
+  [1,2,3,4,5].forEach(i=>{
+    payload['phoneLabel'+i] = document.getElementById('setPhoneLabel'+i).value.trim();
+    payload['phone'+i] = document.getElementById('setPhone'+i).value.trim();
+    payload['fbLabel'+i] = document.getElementById('setFbLabel'+i).value.trim();
+    payload['fb'+i] = document.getElementById('setFb'+i).value.trim();
   });
+  await apiPost(payload);
   fetchAll();
   alert('Đã lưu trang chào!');
 }
@@ -1099,6 +1553,20 @@ if (location.search.indexOf('resetcache=1') !== -1) {
     navigator.serviceWorker.register('./sw.js').catch(err => console.error('SW lỗi:', err));
   });
 }
+
+function initContactRows(){
+  document.getElementById('setPhoneRows').innerHTML = [1,2,3,4,5].map(i=>
+    `<div class="row" style="margin-top:6px">
+      <input id="setPhoneLabel${i}" placeholder="Tên gọi (VD: Đặt bàn)">
+      <input id="setPhone${i}" placeholder="Số điện thoại ${i}" type="tel">
+    </div>`).join('');
+  document.getElementById('setFbRows').innerHTML = [1,2,3,4,5].map(i=>
+    `<div class="row" style="margin-top:6px">
+      <input id="setFbLabel${i}" placeholder="Tên gọi (VD: Trang chính)">
+      <input id="setFb${i}" placeholder="https://facebook.com/...">
+    </div>`).join('');
+}
+initContactRows();
 
 /* ================= START ================= */
 boot();

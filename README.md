@@ -121,6 +121,84 @@ tab còn lại (Nhân viên, Cài đặt) vẫn chỉ chủ quán mới thấy.
 - Trên điện thoại, mở link bằng Chrome/Safari rồi chọn "Thêm vào màn hình
   chính" để cài như app thật (nhờ manifest.json + sw.js).
 
+## Số điện thoại & Facebook trên trang chào (mới)
+
+Trong tab **⚙️ Cài đặt** → mục **🎨 Trang chào khi quét QR**, giờ có thêm:
+- **5 ô số điện thoại** (mỗi ô có thêm "Tên gọi" tuỳ chọn, VD: "Đặt bàn" -
+  090xxx, "Giao hàng" - 091xxx). Khách bấm vào sẽ tự động gọi (`tel:`).
+- **5 ô link Facebook** (mỗi ô có "Tên gọi" tuỳ chọn, VD: "Trang chính",
+  "Chi nhánh 2"). Khách bấm vào sẽ mở trang Facebook ở tab mới.
+
+Ô nào để trống sẽ không hiện trên trang chào. Không cần điền đủ cả 5 - có thể
+chỉ dùng 1 SĐT và 1 Facebook, hoặc bất kỳ số lượng nào. Nhớ bấm **"Lưu trang
+chào"** sau khi điền.
+
+## Món ăn: ảnh, size, độ cay, topping (mới)
+
+Trong tab **🍽️ Thực đơn** → bấm sửa (✏️) hoặc **+ Thêm món mới**, mỗi món giờ có thêm:
+
+- **Hình món**: dán link ảnh HOẶC bấm "Chọn tệp" để tải thẳng ảnh từ điện thoại/máy
+  tính (app tự nén nhỏ ảnh lại trước khi lưu, không cần upload lên Drive/Imgur nữa).
+  Trang chào QR (mục Ảnh/logo trong Cài đặt) cũng dùng chung cách tải ảnh này.
+- **Có nhiều size (M/L...)**: bật rồi thêm từng size với tên + giá riêng (VD: M -
+  12.000đ, L - 15.000đ). Khi bật, khách phải chọn 1 size trước khi thêm vào giỏ;
+  giá của size sẽ thay cho "Giá mặc định".
+- **Có chọn độ cay**: bật rồi đặt mức cay tối đa (mặc định 0-7). Khách chọn mức
+  cay khi đặt món, không cộng thêm tiền.
+- **Có topping thêm**: bật rồi thêm từng topping với tên + giá cộng thêm (VD:
+  Trân châu +5.000đ). Khách có thể chọn nhiều topping cùng lúc, giá sẽ cộng dồn.
+
+Món có bất kỳ tùy chọn nào ở trên sẽ hiện nút **"Chọn"** thay vì nút +/- khi khách
+xem menu; bấm vào sẽ mở màn hình chọn size/độ cay/topping/số lượng rồi mới thêm
+vào giỏ. Món không có tùy chọn nào vẫn hoạt động như cũ (bấm +/- trực tiếp).
+
+## Nhập nhanh nhiều món theo menu (mới)
+
+Trong tab **🍽️ Thực đơn**, bấm **📋 Nhập nhanh theo menu** để dán một danh sách
+món và tạo hàng loạt cùng lúc, tiện khi đã có sẵn bảng menu (như file ảnh thực
+đơn). Định dạng:
+
+```
+## Trà trái cây
+Trà đào - 25k
+Trà nhiệt đới - 25k
+
+## Rau má
+Truyền thống - M:12k, L:15k
+Đậu xanh - M:15k, L:20k
+
+## Mì cay
+Mì cay xúc xích - 30k
+Mì cay gà - 40k
+```
+
+- Dòng bắt đầu bằng `##` là tên danh mục cho các món phía dưới nó.
+- Mỗi dòng món viết `Tên món - Giá`. Có thể viết `25k` (=25.000đ) hoặc số đầy đủ.
+- Món có nhiều size viết `Tên món - M:12k, L:15k` (có thể thêm nhiều size hơn,
+  cách nhau bằng dấu phẩy).
+- Sau khi nhập nhanh xong, mở lại từng món để thêm ảnh, độ cay, hoặc topping nếu
+  cần - nhập nhanh chỉ tạo tên/giá/size/danh mục.
+
+## ⚠️ Bắt buộc cập nhật lại Apps Script (quan trọng)
+
+File `Code_QuanAn.gs` lần này có thêm cột dữ liệu mới cho món ăn (ảnh, size, độ
+cay, topping), nên bạn cần cập nhật lại backend:
+
+1. Mở Google Sheet của bạn → **Tiện ích mở rộng (Extensions) → Apps Script**.
+2. Xóa hết code cũ, dán toàn bộ nội dung `Code_QuanAn.gs` (bản mới) vào, bấm lưu (💾).
+3. Vào **Deploy → Manage deployments** → bấm ✏️ (Edit) ở deployment đang dùng →
+   mục "Version" chọn **New version** → **Deploy**.
+   (Chỉ lưu code mà không tạo "New version" thì link cũ vẫn chạy code cũ!)
+4. Không cần đổi `API_URL` trong `index.html` vì link web app giữ nguyên.
+5. Sheet "Menu" cũ sẽ tự động được thêm các cột mới (image, sizes, spicyMax,
+   toppings) ở lần chạy đầu tiên sau khi cập nhật - không mất dữ liệu món cũ.
+
+**Lưu ý dung lượng ảnh:** ảnh tải từ máy được nén và lưu trực tiếp vào ô Google
+Sheet (dạng base64), mỗi ô Sheet giới hạn khoảng 50.000 ký tự. App đã tự nén ảnh
+xuống cỡ nhỏ (~480px) trước khi lưu nên thường không vượt giới hạn, nhưng nếu
+muốn ảnh đẹp/nét hơn hoặc dùng nhiều ảnh lớn, vẫn nên dán link ảnh public từ
+Google Drive/Imgur như trước thay vì tải trực tiếp.
+
 ## Nếu cần đổi backend sau này
 
 Mở `index.html`, tìm dòng `const API_URL = "..."` gần đầu thẻ `<script>`
