@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Test kết nối API</title>
+<style>
+  body{font-family:sans-serif;background:#111;color:#eee;padding:16px;line-height:1.5}
+  h2{color:#f59e0b}
+  .box{background:#1e1e1e;border-radius:8px;padding:12px;margin:10px 0;white-space:pre-wrap;word-break:break-all;font-size:13px}
+  .ok{color:#4ade80;font-weight:bold}
+  .fail{color:#f87171;font-weight:bold}
+  button{background:#4f46e5;color:#fff;border:none;padding:10px 16px;border-radius:6px;font-size:15px;margin-top:8px}
+</style>
+</head>
+<body>
+<h2>🔍 Test kết nối tới Apps Script</h2>
+<p>URL đang test:</p>
+<div class="box" id="url"></div>
+<button onclick="runTests()">▶️ Chạy lại test</button>
+<div id="out"></div>
+
+<script>
+const API_URL = "https://script.google.com/macros/s/AKfycbwVgugYtsWdO4MkqKCaYJaAecGOnxUTWdqhG75u5XFUwEDveK1UdfYZSd_sCngS9ajaYg/exec";
+document.getElementById('url').textContent = API_URL;
+
+function log(html){
+  document.getElementById('out').innerHTML += html;
+}
+
+async function runTests(){
+  document.getElementById('out').innerHTML = '';
+  log('<div class="box">⏳ Test 1: fetch GET bình thường (mode: cors, mặc định)...</div>');
+  try {
+    const res = await fetch(API_URL + '?action=getAll');
+    const txt = await res.text();
+    log('<div class="box ok">✅ Test 1 THÀNH CÔNG - status ' + res.status + '<br>Nội dung (rút gọn): ' + txt.slice(0,200) + '</div>');
+  } catch(err){
+    log('<div class="box fail">❌ Test 1 THẤT BẠI<br>Tên lỗi: ' + err.name + '<br>Nội dung lỗi: ' + err.message + '</div>');
+  }
+
+  log('<div class="box">⏳ Test 2: fetch với mode:no-cors (chỉ kiểm tra có tới được server không, không đọc được nội dung)...</div>');
+  try {
+    const res2 = await fetch(API_URL + '?action=getAll', {mode:'no-cors'});
+    log('<div class="box ok">✅ Test 2 THÀNH CÔNG - request tới được server (type: ' + res2.type + '). Nếu Test 1 vẫn lỗi mà Test 2 OK ⇒ chắc chắn là do CORS, không phải do mạng/chặn.</div>');
+  } catch(err){
+    log('<div class="box fail">❌ Test 2 CŨNG THẤT BẠI<br>Tên lỗi: ' + err.name + '<br>Nội dung lỗi: ' + err.message + '<br>⇒ Nếu cả Test 2 cũng lỗi kiểu này, khả năng cao là thiết bị/mạng không kết nối được tới script.google.com chứ không phải do CORS.</div>');
+  }
+
+  log('<div class="box">⏳ Test 3: fetch một trang public khác (ví dụ Google) để kiểm tra mạng có ra Internet bình thường không...</div>');
+  try {
+    await fetch('https://www.google.com/generate_204', {mode:'no-cors'});
+    log('<div class="box ok">✅ Test 3 OK - thiết bị có kết nối Internet ra ngoài bình thường.</div>');
+  } catch(err){
+    log('<div class="box fail">❌ Test 3 LỖI - ' + err.message + ' ⇒ có vẻ thiết bị đang mất kết nối mạng nói chung, không liên quan riêng gì tới Apps Script.</div>');
+  }
+}
+runTests();
+</script>
+</body>
+</html>
