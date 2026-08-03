@@ -118,6 +118,9 @@ label { font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase
 .spicy-picker { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
 .spicy-opt { width:34px; height:34px; border-radius:50%; border:1.5px solid #cbd5e1; background:#fff; font-size:13px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; }
 .spicy-opt.active { background:#dc2626; border-color:#dc2626; color:#fff; }
+.level-picker { display:flex; gap:6px; flex-wrap:wrap; margin-top:6px; }
+.level-opt { padding:8px 14px; border-radius:20px; border:1.5px solid #cbd5e1; background:#fff; font-size:13px; font-weight:700; cursor:pointer; white-space:nowrap; }
+.level-opt.active { background:#312e81; border-color:#312e81; color:#fff; }
 .opt-block { margin-top:14px; }
 .opt-title { font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase; margin-bottom:6px; }
 .size-opt { display:flex; align-items:center; gap:8px; padding:8px 10px; border:1.5px solid #cbd5e1; border-radius:8px; margin-bottom:6px; cursor:pointer; }
@@ -217,7 +220,6 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
       <h1 id="restName">🍜 Quán Ăn</h1>
       <p id="hdSub">Gọi món qua QR <span id="syncDot" class="hidden">· <span class="spin"></span></span></p>
     </div>
-    <button class="hd-btn" id="btnHeaderAction" onclick="goAdminLogin()">🔐 Quản lý</button>
   </div>
 
   <!-- CUSTOMER: CHỌN BÀN -->
@@ -461,6 +463,8 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
         <input type="hidden" id="miSpicyMax" value="7">
       </div>
 
+      <div class="toggle-row"><input type="checkbox" id="miHasSugarIce"><label>Có chọn mức đường/đá (miễn phí, dành cho món nước)</label></div>
+
       <div class="toggle-row"><input type="checkbox" id="miHasTopping" onchange="toggleMiBlock('miToppingBlock', this.checked)"><label>Có topping thêm</label></div>
       <div class="subcard hidden" id="miToppingBlock">
         <div class="chip-label">Danh mục topping của quán (bấm để thêm nhanh, bấm ✕ để xóa khỏi danh mục)</div>
@@ -526,6 +530,16 @@ Mì cay gà - 40k"></textarea>
       <div class="opt-block hidden" id="ioToppingBlock">
         <div class="opt-title">Topping thêm</div>
         <div id="ioToppingList"></div>
+      </div>
+
+      <div class="opt-block hidden" id="ioSugarBlock">
+        <div class="opt-title">Mức đường</div>
+        <div class="level-picker" id="ioSugarList"></div>
+      </div>
+
+      <div class="opt-block hidden" id="ioIceBlock">
+        <div class="opt-title">Mức đá</div>
+        <div class="level-picker" id="ioIceList"></div>
       </div>
 
       <div class="opt-block">
@@ -640,13 +654,16 @@ function money(n){ return (Number(n)||0).toLocaleString('vi-VN') + 'đ'; }
 function todayStr(){ return new Date().toISOString().split('T')[0]; }
 function toMap(arr){ const m={}; (arr||[]).forEach(x=>{ if(x.id) m[x.id]=x; }); return m; }
 function safeJSON(s, fallback){ try{ const v = typeof s==='string' ? JSON.parse(s) : s; return Array.isArray(v) ? v : fallback; }catch(e){ return fallback; } }
+const SUGAR_LEVELS = ['Giảm đường','Bình thường','Tăng đường'];
+const ICE_LEVELS = ['Giảm đá','Bình thường','Tăng đá'];
 function parseItemExtras(m){
   const sizes = safeJSON(m && m.sizes, []);
   const toppings = safeJSON(m && m.toppings, []);
   const spicyMax = Number(m && m.spicyMax) || 0;
-  return { sizes, toppings, spicyMax };
+  const sugarIce = !!(m && (m.sugarIce === true || m.sugarIce === 'true' || m.sugarIce === 1));
+  return { sizes, toppings, spicyMax, sugarIce };
 }
-function itemHasVariant(m){ const e = parseItemExtras(m); return e.sizes.length>0 || e.spicyMax>0 || e.toppings.length>0; }
+function itemHasVariant(m){ const e = parseItemExtras(m); return e.sizes.length>0 || e.spicyMax>0 || e.toppings.length>0 || e.sugarIce; }
 
 /* Nén ảnh chọn từ máy rồi tải lên Supabase Storage (bucket "images"), gán URL công khai vào ô input (dùng chung cho logo & hình món) */
 function fileToCompressedBlob(file, maxDim, quality){
@@ -788,7 +805,8 @@ async function sbUpdateOrderStatus(body){
 async function sbSaveMenuItem(body){
   const row = {
     name: body.name, price: body.price, category: body.category, available: body.available,
-    image: body.image||'', sizes: body.sizes||'[]', spicyMax: body.spicyMax||0, toppings: body.toppings||'[]'
+    image: body.image||'', sizes: body.sizes||'[]', spicyMax: body.spicyMax||0, toppings: body.toppings||'[]',
+    sugarIce: !!body.sugarIce
   };
   if (body.id){
     const { error } = await sb.from('menu').update(row).eq('id', body.id).eq('restaurantId', currentRid);
@@ -1305,8 +1323,8 @@ let ioState = null;
 function openItemOptions(id){
   const m = menuItems[id]; if (!m) return;
   const extras = parseItemExtras(m);
-  ioState = { id, name:m.name, image:m.image||'', basePrice:Number(m.price)||0, sizes:extras.sizes, spicyMax:extras.spicyMax, toppings:extras.toppings,
-    selSize: extras.sizes[0] || null, selSpicy: 0, selToppings: [], qty: 1 };
+  ioState = { id, name:m.name, image:m.image||'', basePrice:Number(m.price)||0, sizes:extras.sizes, spicyMax:extras.spicyMax, toppings:extras.toppings, sugarIce:extras.sugarIce,
+    selSize: extras.sizes[0] || null, selSpicy: 0, selToppings: [], selSugar: 1, selIce: 1, qty: 1 };
 
   document.getElementById('ioItemId').value = id;
   document.getElementById('ioName').textContent = m.name;
@@ -1336,6 +1354,17 @@ function openItemOptions(id){
       `<label class="topping-opt"><input type="checkbox" onchange="toggleIoTopping(${i}, this.checked)"><span>${t.name}</span><span class="muted" style="margin-left:auto">+${money(t.price)}</span></label>`).join('');
   } else topBlock.classList.add('hidden');
 
+  const sugarBlock = document.getElementById('ioSugarBlock');
+  const iceBlock = document.getElementById('ioIceBlock');
+  if (extras.sugarIce){
+    sugarBlock.classList.remove('hidden');
+    iceBlock.classList.remove('hidden');
+    document.getElementById('ioSugarList').innerHTML = SUGAR_LEVELS.map((label,i)=>
+      `<div class="level-opt ${i===1?'active':''}" data-i="${i}" onclick="selectIoSugar(${i})">${label}</div>`).join('');
+    document.getElementById('ioIceList').innerHTML = ICE_LEVELS.map((label,i)=>
+      `<div class="level-opt ${i===1?'active':''}" data-i="${i}" onclick="selectIoIce(${i})">${label}</div>`).join('');
+  } else { sugarBlock.classList.add('hidden'); iceBlock.classList.add('hidden'); }
+
   updateIoTotal();
   document.getElementById('modalItemOptions').classList.add('active');
 }
@@ -1347,6 +1376,14 @@ function selectIoSize(i){
 function selectIoSpicy(level){
   ioState.selSpicy = level;
   document.querySelectorAll('#ioSpicyList .spicy-opt').forEach(el=>el.classList.toggle('active', Number(el.dataset.l)===level));
+}
+function selectIoSugar(i){
+  ioState.selSugar = i;
+  document.querySelectorAll('#ioSugarList .level-opt').forEach((el,idx)=>el.classList.toggle('active', idx===i));
+}
+function selectIoIce(i){
+  ioState.selIce = i;
+  document.querySelectorAll('#ioIceList .level-opt').forEach((el,idx)=>el.classList.toggle('active', idx===i));
 }
 function toggleIoTopping(i, checked){
   const t = ioState.toppings[i];
@@ -1370,7 +1407,9 @@ function updateIoTotal(){
 }
 function confirmAddVariant(){
   const unitPrice = ioUnitPrice();
-  const key = [ioState.id, ioState.selSize?ioState.selSize.name:'', ioState.selSpicy, ioState.selToppings.map(t=>t.name).sort().join(',')].join('|');
+  const sugarPart = ioState.sugarIce ? SUGAR_LEVELS[ioState.selSugar] : '';
+  const icePart = ioState.sugarIce ? ICE_LEVELS[ioState.selIce] : '';
+  const key = [ioState.id, ioState.selSize?ioState.selSize.name:'', ioState.selSpicy, ioState.selToppings.map(t=>t.name).sort().join(','), sugarPart, icePart].join('|');
   const existing = cartVariants.find(v=>v.key===key);
   if (existing) existing.qty += ioState.qty;
   else cartVariants.push({
@@ -1378,6 +1417,7 @@ function confirmAddVariant(){
     size: ioState.selSize ? ioState.selSize.name : '',
     spicy: ioState.spicyMax>0 ? ioState.selSpicy : null,
     toppings: ioState.selToppings.map(t=>t.name),
+    sugar: sugarPart, ice: icePart,
     qty: ioState.qty, unitPrice
   });
   closeModal('modalItemOptions');
@@ -1388,6 +1428,8 @@ function variantLabel(v){
   const parts = [];
   if (v.size) parts.push('size ' + v.size);
   if (v.spicy!==null && v.spicy!==undefined) parts.push('cay ' + v.spicy);
+  if (v.sugar) parts.push(v.sugar);
+  if (v.ice) parts.push(v.ice);
   if (v.toppings && v.toppings.length) parts.push('+' + v.toppings.join(', +'));
   return parts.length ? v.name + ' (' + parts.join(' · ') + ')' : v.name;
 }
@@ -1440,7 +1482,7 @@ async function submitOrder(){
   const btn = document.getElementById('btnSubmitOrder');
   btn.disabled = true; btn.textContent = 'Đang gửi...';
   const simpleItems = Object.entries(cart).map(([id,q])=>({id, name:menuItems[id].name, price:menuItems[id].price, qty:q}));
-  const variantItems = cartVariants.map(v=>({id:v.id, name:variantLabel(v), price:v.unitPrice, qty:v.qty, size:v.size, spicy:v.spicy, toppings:v.toppings}));
+  const variantItems = cartVariants.map(v=>({id:v.id, name:variantLabel(v), price:v.unitPrice, qty:v.qty, size:v.size, spicy:v.spicy, toppings:v.toppings, sugar:v.sugar, ice:v.ice}));
   const items = simpleItems.concat(variantItems);
   try{
     const res = await apiPost({
@@ -1798,6 +1840,8 @@ function openMenuItemModal(id){
   toggleMiBlock('miSpicyBlock', e.spicyMax>0);
   document.getElementById('miSpicyMax').value = 7;
 
+  document.getElementById('miHasSugarIce').checked = !!e.sugarIce;
+
   miToppingsArr = e.toppings.length ? JSON.parse(JSON.stringify(e.toppings)) : [];
   document.getElementById('miHasTopping').checked = miToppingsArr.length>0;
   toggleMiBlock('miToppingBlock', miToppingsArr.length>0);
@@ -1813,6 +1857,7 @@ async function saveMenuItem(){
   const hasSize = document.getElementById('miHasSize').checked;
   const hasSpicy = document.getElementById('miHasSpicy').checked;
   const hasTopping = document.getElementById('miHasTopping').checked;
+  const hasSugarIce = document.getElementById('miHasSugarIce').checked;
   const quickSizes = [];
   if (hasSize){
     if (document.getElementById('miSizeM').checked) quickSizes.push({name:'M', price: parseFloat(document.getElementById('miSizeMPrice').value)||0});
@@ -1832,7 +1877,8 @@ async function saveMenuItem(){
     image: document.getElementById('miImage').value.trim(),
     sizes: JSON.stringify(sizes),
     spicyMax,
-    toppings: JSON.stringify(toppings)
+    toppings: JSON.stringify(toppings),
+    sugarIce: hasSugarIce
   };
   if (!data.name) return alert('Nhập tên món!');
   if (toppings.length){
