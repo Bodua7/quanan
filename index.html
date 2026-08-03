@@ -295,7 +295,8 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
   <div id="scr-admin" class="hidden">
     <div class="pad" style="padding-bottom:0;display:flex;justify-content:space-between;align-items:center;gap:8px">
       <span class="badge" id="roleLabel" style="background:#312e81"></span>
-      <button class="btn btn-outline btn-sm" onclick="goRestaurantList()">🔁 Đổi quán</button>
+      <button class="btn btn-outline btn-sm hidden" id="btnBackToMaster" onclick="backToMasterDashboard()">🏬 Về quản lý chuỗi</button>
+      <button class="btn btn-outline btn-sm" id="btnSwitchRest" onclick="goRestaurantList()">🔁 Đổi quán</button>
     </div>
     <div class="tabs">
       <div class="tab active" data-t="orders" onclick="switchAdminTab(this,'orders')">📋 Đơn hàng</div>
@@ -428,7 +429,7 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
         <img id="qrCustomer" style="width:180px;height:180px;display:block;margin:10px auto">
         <p class="muted" id="qrLink" style="text-align:center;word-break:break-all"></p>
       </div>
-      <button class="btn btn-outline" onclick="adminLogout()">🚪 Đăng xuất</button>
+      <button class="btn btn-outline" id="btnAdminLogoutSettings" onclick="adminLogout()">🚪 Đăng xuất</button>
     </div>
   </div>
 
@@ -625,6 +626,14 @@ let currentOrderId = localStorage.getItem('qa_orderId') || null;
 let isAdmin = sessionStorage.getItem('qa_isAdmin') === '1';
 let mgmtRole = sessionStorage.getItem('qa_role') || '';
 let isMaster = sessionStorage.getItem('qa_isMaster') === '1';
+// true khi đang ở khu quản lý 1 quán vì được CHỦ CHUỖI bấm "Vào quản lý" (khác
+// với chủ quán/nhân viên tự đăng nhập bằng PIN riêng của quán) - dùng để tách
+// luồng thoát/đăng xuất và hiện nhãn riêng, không lẫn 2 vai trò với nhau.
+let viaMaster = sessionStorage.getItem('qa_viaMaster') === '1';
+function clearAdminSession(){
+  isAdmin = false; mgmtRole = ''; viaMaster = false;
+  sessionStorage.removeItem('qa_isAdmin'); sessionStorage.removeItem('qa_role'); sessionStorage.removeItem('qa_viaMaster');
+}
 let ordersFilter = 'active';
 const STATUS_STEPS = [
   {k:'pending', label:'Chờ xác nhận', icon:'1'},
@@ -1023,8 +1032,7 @@ function boot(){
     localStorage.setItem('qa_rid', rParam);
     localStorage.removeItem('qa_table'); localStorage.removeItem('qa_orderId');
     currentTable = ''; currentOrderId = null;
-    isAdmin = false; mgmtRole = '';
-    sessionStorage.removeItem('qa_isAdmin'); sessionStorage.removeItem('qa_role');
+    clearAdminSession();
   }
   const t = params.get('table');
   if (t) { currentTable = t; localStorage.setItem('qa_table', t); }
@@ -1054,7 +1062,7 @@ function confirmTable(){
   showMenu();
 }
 
-function goCustomer(){ isAdmin=false; sessionStorage.removeItem('qa_isAdmin'); boot(); }
+function goCustomer(){ clearAdminSession(); boot(); }
 function goAdminLogin(){ hideAllScreens(); document.getElementById('scr-admin-login').classList.remove('hidden'); }
 
 /* ================= CHỌN QUÁN (trung tâm nhiều quán) ================= */
@@ -1080,6 +1088,7 @@ async function showRestaurantList(){
     </div>`).join('');
 }
 function selectRestaurant(id){
+  if (id !== currentRid) clearAdminSession(); // đổi sang quán khác -> luôn bắt đăng nhập lại, không dùng ké phiên admin của quán cũ
   currentRid = id;
   localStorage.setItem('qa_rid', id);
   boot();
@@ -1088,8 +1097,7 @@ function goRestaurantList(){
   currentRid = '';
   localStorage.removeItem('qa_rid'); localStorage.removeItem('qa_table'); localStorage.removeItem('qa_orderId');
   currentTable = ''; currentOrderId = null;
-  isAdmin = false; mgmtRole = '';
-  sessionStorage.removeItem('qa_isAdmin'); sessionStorage.removeItem('qa_role');
+  clearAdminSession();
   history.replaceState(null, '', location.pathname);
   showRestaurantList();
 }
@@ -1115,12 +1123,17 @@ async function masterLogin(){
 function masterLogout(){
   isMaster = false;
   sessionStorage.removeItem('qa_isMaster');
+  clearAdminSession(); // đang xem hộ quán nào thì thoát luôn, tránh còn sót quyền admin sau khi chủ chuỗi đăng xuất
   showRestaurantList();
 }
 async function showMasterDashboard(){
   hideAllScreens();
   document.getElementById('hdBar').classList.add('hidden');
   document.getElementById('scr-master').classList.remove('hidden');
+  // Dashboard chuỗi không gắn với 1 quán cụ thể -> bỏ currentRid để tải lại trang
+  // (F5) không bị lạc sang trang khách/splash của quán vừa xem hộ trước đó.
+  currentRid = '';
+  localStorage.removeItem('qa_rid');
   await loadMasterRestaurants();
 }
 async function loadMasterRestaurants(){
@@ -1163,10 +1176,16 @@ async function changeMasterPin(){
 function enterRestaurantAsMaster(id){
   currentRid = id;
   localStorage.setItem('qa_rid', id);
-  isAdmin = true; mgmtRole = 'admin';
-  sessionStorage.setItem('qa_isAdmin','1'); sessionStorage.setItem('qa_role','admin');
+  isAdmin = true; mgmtRole = 'admin'; viaMaster = true;
+  sessionStorage.setItem('qa_isAdmin','1'); sessionStorage.setItem('qa_role','admin'); sessionStorage.setItem('qa_viaMaster','1');
   startPolling();
   showAdmin();
+}
+// Chủ chuỗi thoát khỏi khu quản lý của 1 quán -> quay lại Dashboard chuỗi (KHÔNG
+// đăng xuất khỏi vai trò chủ chuỗi, và KHÔNG rớt ra trang khách như chủ quán thường).
+function backToMasterDashboard(){
+  clearAdminSession();
+  showMasterDashboard();
 }
 function openRestaurantModal(id){
   const r = id ? masterRestaurants[id] : {};
@@ -1194,7 +1213,10 @@ async function saveRestaurantMaster(){
   if (newAdminPin) data.adminPin = newAdminPin;
   if (newStaffPin) data.staffPin = newStaffPin;
   if (!data.name) return alert('Nhập tên quán!');
-  await apiPost(data);
+  let res;
+  try { res = await apiPost(data); }
+  catch(err){ return alert('Lỗi kết nối: ' + (err && err.message ? err.message : err)); }
+  if (!res || !res.ok) return alert('Không lưu được quán: ' + (res && res.error ? res.error : 'lỗi không xác định'));
   closeModal('modalRestaurant');
   loadMasterRestaurants();
 }
@@ -1202,7 +1224,10 @@ async function deleteRestaurantMaster(){
   const id = document.getElementById('mrId').value;
   if (!id) return;
   if (confirm('Xóa quán này khỏi danh sách? Dữ liệu món/đơn/kho cũ của quán sẽ không hiện ra nữa (không tự xóa hẳn) - chỉ nên xóa quán tạo nhầm.')) {
-    await apiPost({action:'deleteRestaurant', id});
+    let res;
+    try { res = await apiPost({action:'deleteRestaurant', id}); }
+    catch(err){ return alert('Lỗi kết nối: ' + (err && err.message ? err.message : err)); }
+    if (!res || !res.ok) return alert('Không xóa được quán: ' + (res && res.error ? res.error : 'lỗi không xác định'));
     closeModal('modalRestaurant');
     loadMasterRestaurants();
   }
@@ -1550,16 +1575,29 @@ async function adminLogin(){
   }
   isAdmin = true;
   mgmtRole = role;
+  viaMaster = false;
   sessionStorage.setItem('qa_isAdmin','1');
   sessionStorage.setItem('qa_role', mgmtRole);
+  sessionStorage.removeItem('qa_viaMaster');
   document.getElementById('inpAdminPin').value = '';
   showAdmin();
 }
-function adminLogout(){ mgmtRole=''; sessionStorage.removeItem('qa_role'); goCustomer(); }
+// Đăng xuất khu quản lý quán: nếu đang ở đây vì chủ chuỗi bấm "Vào quản lý" thì
+// quay lại Dashboard chuỗi; nếu là chủ quán/nhân viên tự đăng nhập PIN thì như cũ,
+// quay ra trang khách của quán đó.
+function adminLogout(){
+  if (viaMaster) { backToMasterDashboard(); return; }
+  clearAdminSession();
+  goCustomer();
+}
 
 function applyRoleVisibility(){
   const isOwner = mgmtRole === 'admin';
-  document.getElementById('roleLabel').textContent = isOwner ? '🔐 Chủ quán · Toàn quyền' : '👨‍🍳 Nhân viên · Bếp & Kho';
+  document.getElementById('roleLabel').textContent = viaMaster ? '🏢 Chủ chuỗi · Đang quản lý hộ' : (isOwner ? '🔐 Chủ quán · Toàn quyền' : '👨‍🍳 Nhân viên · Bếp & Kho');
+  document.getElementById('btnBackToMaster').classList.toggle('hidden', !viaMaster);
+  document.getElementById('btnSwitchRest').classList.toggle('hidden', viaMaster);
+  const btnLogoutSettings = document.getElementById('btnAdminLogoutSettings');
+  if (btnLogoutSettings) btnLogoutSettings.textContent = viaMaster ? '🏬 Về quản lý chuỗi' : '🚪 Đăng xuất';
   document.querySelectorAll('.owner-only').forEach(el => el.classList.toggle('hidden', !isOwner));
   document.getElementById('staffQuickLinks').classList.toggle('hidden', isOwner);
   document.getElementById('hdSub').textContent = isOwner ? 'Quản lý quán ăn' : 'Khu vực nhân viên';
