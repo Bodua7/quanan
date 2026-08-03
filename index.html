@@ -12,6 +12,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="Quán Ăn">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <style>
 * { box-sizing:border-box; margin:0; padding:0; font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif; -webkit-tap-highlight-color:transparent; }
@@ -87,6 +88,7 @@ label { font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase
 .splash { min-height:100vh; background:linear-gradient(180deg,#fff7ed 0%,#fde7d4 55%,#fef3ec 100%); display:flex; flex-direction:column; align-items:center; padding:28px 20px 40px; position:relative; }
 .splash-lock { position:absolute; top:16px; right:16px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,.75); backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; font-size:17px; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.1); }
 .splash-wallet { position:absolute; top:16px; right:64px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,.75); backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; font-size:17px; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.1); }
+.splash-switch { position:absolute; top:16px; right:112px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,.75); backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; font-size:16px; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.1); }
 .splash-logos { display:flex; flex-wrap:wrap; justify-content:center; gap:16px; margin:44px 0 22px; }
 .splash-logo { width:118px; height:118px; border-radius:50%; overflow:hidden; border:3px solid #fff; box-shadow:0 6px 16px rgba(0,0,0,.14); background:#fff; display:flex; align-items:center; justify-content:center; }
 .splash-logo img { width:100%; height:100%; object-fit:cover; }
@@ -123,6 +125,15 @@ label { font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase
 .topping-opt { display:flex; align-items:center; gap:8px; padding:6px 0; }
 .topping-opt input { width:auto; }
 .variant-desc { font-size:11px; color:#64748b; margin-top:2px; }
+.chip-scroll { display:flex; gap:6px; overflow-x:auto; padding:4px 2px 8px; -webkit-overflow-scrolling:touch; }
+.chip-scroll::-webkit-scrollbar{ height:4px; }
+.chip { flex-shrink:0; background:#eef2ff; color:#312e81; border:1.5px solid #c7d2fe; border-radius:16px; padding:6px 12px; font-size:12px; font-weight:700; cursor:pointer; white-space:nowrap; }
+.chip:active { background:#c7d2fe; }
+.chip-label { font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase; margin-top:8px; margin-bottom:2px; }
+.quick-size-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+.size-quick { display:flex; align-items:center; gap:4px; font-weight:700; font-size:13px; margin:0; text-transform:none; color:#1e293b; }
+.size-quick input { width:auto; }
+.quick-size-row input[type=number] { max-width:100px; }
 textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; resize:vertical; }
 
 .splash-contact { display:flex; flex-wrap:wrap; justify-content:center; gap:8px; margin-top:18px; max-width:360px; }
@@ -136,12 +147,59 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
   <div id="configNotice" class="pad hidden">
     <div class="card" style="border-left:4px solid #dc2626">
       <div class="card-title">⚠️ Chưa cấu hình API</div>
-      <p class="muted">Mở file QuanAn.html, tìm dòng <b>const API_URL</b> gần cuối file và dán Web app URL của Google Apps Script vào đó.</p>
+      <p class="muted">Mở file index.html, tìm 2 dòng <b>SUPABASE_URL</b> và <b>SUPABASE_ANON_KEY</b> gần đầu thẻ &lt;script&gt; và dán thông tin project Supabase của bạn vào đó.</p>
     </div>
+  </div>
+
+  <!-- CHỌN QUÁN (màn trung tâm khi mở app chưa gắn với 1 quán cụ thể) -->
+  <div id="scr-restlist" class="pad hidden">
+    <div class="splash-lock" onclick="showMasterLogin()" title="Chủ chuỗi">🔒</div>
+    <div class="card">
+      <div class="card-title">🏬 Chọn quán</div>
+      <p class="muted">Chọn quán bạn muốn xem/gọi món hoặc quản lý.</p>
+    </div>
+    <div id="restListBox"></div>
+  </div>
+
+  <!-- ĐĂNG NHẬP CHỦ CHUỖI -->
+  <div id="scr-master-login" class="hidden">
+    <div class="login-wrap">
+      <div class="login-box">
+        <div style="font-size:40px;margin-bottom:8px">🏬</div>
+        <div class="card">
+          <label>Mã chủ chuỗi (Master PIN)</label>
+          <input type="password" id="inpMasterPin" placeholder="Nhập mã chủ chuỗi">
+          <button class="btn btn-primary" style="margin-top:12px" onclick="masterLogin()">Đăng nhập</button>
+          <button class="btn btn-outline" style="margin-top:8px" onclick="showRestaurantList()">← Quay lại chọn quán</button>
+        </div>
+        <p class="muted">Mã mặc định: 9999 (đổi trong Cài đặt chuỗi sau khi đăng nhập)</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- DASHBOARD CHỦ CHUỖI: DANH SÁCH TẤT CẢ QUÁN -->
+  <div id="scr-master" class="pad hidden">
+    <div class="card">
+      <div class="card-title">🏬 Quản lý chuỗi quán</div>
+      <button class="btn btn-primary" onclick="openRestaurantModal()">+ Thêm quán mới</button>
+    </div>
+    <div id="masterRestList"></div>
+    <div class="card">
+      <div class="card-title">🔑 Đổi mã chủ chuỗi</div>
+      <label>Mã hiện tại</label>
+      <input type="password" id="mpOld" placeholder="Mã chủ chuỗi hiện tại">
+      <label style="margin-top:8px">Mã mới</label>
+      <input type="password" id="mpNew" placeholder="Mã chủ chuỗi mới">
+      <label style="margin-top:8px">Nhập lại mã mới</label>
+      <input type="password" id="mpNew2" placeholder="Nhập lại mã mới">
+      <button class="btn btn-primary" style="margin-top:12px" onclick="changeMasterPin()">Lưu mã mới</button>
+    </div>
+    <button class="btn btn-outline" onclick="masterLogout()">🚪 Đăng xuất</button>
   </div>
 
   <!-- TRANG CHÀO KHI QUÉT QR -->
   <div id="scr-splash" class="splash hidden">
+    <div class="splash-switch" onclick="goRestaurantList()" title="Đổi quán">🏬</div>
     <div class="splash-lock" onclick="goAdminLogin()" title="Đăng nhập quản lý">🔒</div>
     <div class="splash-wallet" onclick="openWallet()">👛</div>
     <div class="splash-logos" id="splashLogos"></div>
@@ -228,15 +286,16 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
           <button class="btn btn-primary" style="margin-top:12px" onclick="adminLogin()">Đăng nhập</button>
           <button class="btn btn-outline" style="margin-top:8px" onclick="goCustomer()">← Quay lại đặt món</button>
         </div>
-        <p class="muted">PIN mặc định: Nhân viên 5678 · Chủ quán 1234 (đổi trong Cài đặt sau khi đăng nhập bằng PIN chủ quán)</p>
+        <p class="muted">Nhập PIN nhân viên hoặc PIN chủ quán của quán này (đổi trong tab ⚙️ Cài đặt sau khi đăng nhập bằng PIN chủ quán)</p>
       </div>
     </div>
   </div>
 
   <!-- ADMIN DASHBOARD -->
   <div id="scr-admin" class="hidden">
-    <div class="pad" style="padding-bottom:0">
+    <div class="pad" style="padding-bottom:0;display:flex;justify-content:space-between;align-items:center;gap:8px">
       <span class="badge" id="roleLabel" style="background:#312e81"></span>
+      <button class="btn btn-outline btn-sm" onclick="goRestaurantList()">🔁 Đổi quán</button>
     </div>
     <div class="tabs">
       <div class="tab active" data-t="orders" onclick="switchAdminTab(this,'orders')">📋 Đơn hàng</div>
@@ -247,7 +306,7 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
       <div class="tab owner-only" data-t="settings" onclick="switchAdminTab(this,'settings')">⚙️ Cài đặt</div>
     </div>
     <div class="pad hidden" id="staffQuickLinks" style="padding-bottom:0">
-      <a class="btn btn-outline btn-sm" style="text-decoration:none;display:inline-block" href="?checkin=1" target="_blank">🕒 Chấm công của tôi</a>
+      <a class="btn btn-outline btn-sm" id="checkinQuickLink" style="text-decoration:none;display:inline-block" href="?checkin=1" target="_blank">🕒 Chấm công của tôi</a>
     </div>
 
     <div class="pad admin-tab" id="tab-orders">
@@ -381,6 +440,7 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
       <label>Tên món</label><input id="miName">
       <label>Giá mặc định (đ) <span class="muted" style="text-transform:none">- nếu có size riêng thì giá size sẽ dùng thay giá này</span></label><input id="miPrice" type="number">
       <label>Danh mục</label><input id="miCat" placeholder="VD: Món chính, Nước uống...">
+      <div class="chip-scroll" id="miCatChips"></div>
       <label style="display:flex;align-items:center;gap:8px;margin-top:12px"><input type="checkbox" id="miAvail" style="width:auto" checked> Đang bán</label>
 
       <label>Hình món</label>
@@ -389,20 +449,29 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
 
       <div class="toggle-row"><input type="checkbox" id="miHasSize" onchange="toggleMiBlock('miSizeBlock', this.checked)"><label>Có nhiều size (M/L...)</label></div>
       <div class="subcard hidden" id="miSizeBlock">
+        <div class="quick-size-row">
+          <label class="size-quick"><input type="checkbox" id="miSizeM"> M</label>
+          <input type="number" id="miSizeMPrice" placeholder="Giá size M">
+          <label class="size-quick"><input type="checkbox" id="miSizeL"> L</label>
+          <input type="number" id="miSizeLPrice" placeholder="Giá size L">
+        </div>
+        <div class="chip-label">Size khác (tuỳ chỉnh)</div>
         <div id="miSizeRows"></div>
-        <button type="button" class="tiny-btn" onclick="addSizeRow()">+ Thêm size</button>
+        <button type="button" class="tiny-btn" onclick="addSizeRow()">+ Thêm size khác</button>
       </div>
 
       <div class="toggle-row"><input type="checkbox" id="miHasSpicy" onchange="toggleMiBlock('miSpicyBlock', this.checked)"><label>Có chọn độ cay</label></div>
       <div class="subcard hidden" id="miSpicyBlock">
-        <label>Mức cay tối đa (0 = không cay ... thường là 7)</label>
-        <input id="miSpicyMax" type="number" min="1" max="10" value="7">
+        <p class="muted" style="margin:0">Mức cay tự động từ 0 đến 7, khách chọn khi đặt món - không cần chỉnh gì thêm.</p>
+        <input type="hidden" id="miSpicyMax" value="7">
       </div>
 
       <div class="toggle-row"><input type="checkbox" id="miHasTopping" onchange="toggleMiBlock('miToppingBlock', this.checked)"><label>Có topping thêm</label></div>
       <div class="subcard hidden" id="miToppingBlock">
+        <div class="chip-label">Topping đã lưu (bấm để thêm nhanh)</div>
+        <div class="chip-scroll" id="miToppingChips"></div>
         <div id="miToppingRows"></div>
-        <button type="button" class="tiny-btn" onclick="addToppingRow()">+ Thêm topping</button>
+        <button type="button" class="tiny-btn" onclick="addToppingRow()">+ Thêm topping mới</button>
       </div>
 
       <button class="btn btn-primary" style="margin-top:14px" onclick="saveMenuItem()">Lưu</button>
@@ -487,6 +556,22 @@ Mì cay gà - 40k"></textarea>
     </div>
   </div>
 
+  <div class="modal-bg" id="modalRestaurant">
+    <div class="modal-box">
+      <div class="modal-close" onclick="closeModal('modalRestaurant')">✕ Đóng</div>
+      <div class="card-title">Quán</div>
+      <input type="hidden" id="mrId">
+      <label>Tên quán</label><input id="mrName">
+      <label>Địa chỉ</label><input id="mrAddr">
+      <label>PIN chủ quán (4-6 số)</label><input id="mrAdminPin" placeholder="Mặc định 1234">
+      <label>PIN nhân viên (4-6 số)</label><input id="mrStaffPin" placeholder="Mặc định 5678">
+      <label style="display:flex;align-items:center;gap:8px;margin-top:12px"><input type="checkbox" id="mrActive" style="width:auto" checked> Đang hoạt động (hiện trong danh sách chọn quán)</label>
+      <p class="muted" style="margin-top:8px">Địa chỉ, ảnh, số điện thoại, Facebook, vị trí GPS... chỉnh chi tiết hơn trong tab ⚙️ Cài đặt sau khi vào quản lý quán này.</p>
+      <button class="btn btn-primary" style="margin-top:14px" onclick="saveRestaurantMaster()">Lưu</button>
+      <button class="btn btn-red" style="margin-top:8px" id="mrDeleteBtn" onclick="deleteRestaurantMaster()">Xóa quán này</button>
+    </div>
+  </div>
+
   <!-- STAFF CHECK-IN (link riêng ?checkin=1) -->
   <div id="scr-checkin" class="pad hidden">
     <div class="card">
@@ -506,16 +591,20 @@ Mì cay gà - 40k"></textarea>
 </div>
 
 <script>
-/* ================= CẤU HÌNH API (Google Apps Script Web App URL) =================
-   Dán "Web app URL" bạn lấy được sau khi Deploy Apps Script vào đây.
-   Dạng: https://script.google.com/macros/s/AKfycb.../exec
+/* ================= CẤU HÌNH SUPABASE =================
+   Vào Project Settings > API trên Supabase, copy "Project URL" và
+   "anon public key" rồi dán vào 2 dòng dưới đây.
 ==================================================================================== */
-const API_URL = "https://script.google.com/macros/s/AKfycbwxgp6ugdKZkDmf1gvKPQl5TesNgIo5lPFBdfKshPTbWbqbsk33Ps7YqxVBH3_hOYKYmg/exec";
+const SUPABASE_URL = "https://cwjuvxktediyfjyazakm.supabase.co";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImN3anV2eGt0ZWRpeWZqeWF6YWttIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODQzNzUxMDUsImV4cCI6MjA5OTk1MTEwNX0.feFpJYJgPy2zvLM990XO9iwMfXeeZ_umv3L1WXz1JVQ";
 
-const isConfigured = API_URL.indexOf('PASTE_') === -1 && API_URL.length > 10;
+const isConfigured = SUPABASE_URL.indexOf('PASTE_') === -1 && SUPABASE_ANON_KEY.indexOf('PASTE_') === -1;
 if (!isConfigured) document.getElementById('configNotice').classList.remove('hidden');
 
+const sb = isConfigured ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
+
 /* ================= STATE ================= */
+let currentRid = localStorage.getItem('qa_rid') || '';
 let currentTable = localStorage.getItem('qa_table') || '';
 let cart = {};
 let cartVariants = [];
@@ -523,10 +612,13 @@ let menuItems = {};
 let ordersMap = {};
 let inventoryItems = {};
 let staffList = {};
-let settings = {};
+let restaurantInfo = {};      // hồ sơ công khai của quán đang chọn (thay cho "settings" cũ)
+let restaurantsPublic = {};   // danh sách quán cho màn "Chọn quán"
+let masterRestaurants = {};   // danh sách đầy đủ quán, chỉ chủ chuỗi thấy
 let currentOrderId = localStorage.getItem('qa_orderId') || null;
 let isAdmin = sessionStorage.getItem('qa_isAdmin') === '1';
 let mgmtRole = sessionStorage.getItem('qa_role') || '';
+let isMaster = sessionStorage.getItem('qa_isMaster') === '1';
 let ordersFilter = 'active';
 const STATUS_STEPS = [
   {k:'pending', label:'Chờ xác nhận', icon:'1'},
@@ -547,8 +639,8 @@ function parseItemExtras(m){
 }
 function itemHasVariant(m){ const e = parseItemExtras(m); return e.sizes.length>0 || e.spicyMax>0 || e.toppings.length>0; }
 
-/* Nén ảnh chọn từ máy thành base64 nhỏ gọn rồi gán vào ô input (dùng chung cho logo & hình món) */
-function fileToCompressedDataURL(file, maxDim, quality){
+/* Nén ảnh chọn từ máy rồi tải lên Supabase Storage (bucket "images"), gán URL công khai vào ô input (dùng chung cho logo & hình món) */
+function fileToCompressedBlob(file, maxDim, quality){
   return new Promise((resolve, reject)=>{
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('Không đọc được tệp'));
@@ -562,7 +654,7 @@ function fileToCompressedDataURL(file, maxDim, quality){
         const canvas = document.createElement('canvas');
         canvas.width = w; canvas.height = h;
         canvas.getContext('2d').drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/jpeg', quality));
+        canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('Không nén được ảnh')), 'image/jpeg', quality);
       };
       img.src = reader.result;
     };
@@ -572,30 +664,228 @@ function fileToCompressedDataURL(file, maxDim, quality){
 async function uploadImageTo(targetInputId, fileInputEl){
   const file = fileInputEl.files && fileInputEl.files[0];
   if (!file) return;
+  const prev = document.getElementById(targetInputId + 'Prev');
   try{
-    const dataUrl = await fileToCompressedDataURL(file, 480, 0.6);
-    document.getElementById(targetInputId).value = dataUrl;
-    const prev = document.getElementById(targetInputId + 'Prev');
-    if (prev) { prev.src = dataUrl; prev.style.display = 'block'; }
-  } catch(err){ alert('Không xử lý được ảnh này, thử ảnh khác nhé!'); }
+    const blob = await fileToCompressedBlob(file, 480, 0.6);
+    const path = targetInputId + '/' + Date.now() + '_' + Math.random().toString(36).slice(2) + '.jpg';
+    const { error } = await sb.storage.from('images').upload(path, blob, { contentType:'image/jpeg', upsert:true });
+    if (error) throw error;
+    const { data: pub } = sb.storage.from('images').getPublicUrl(path);
+    const url = pub.publicUrl;
+    document.getElementById(targetInputId).value = url;
+    if (prev) { prev.src = url; prev.style.display = 'block'; }
+  } catch(err){ alert('Không tải ảnh lên được, thử ảnh khác nhé!'); }
   finally { fileInputEl.value = ''; }
 }
 
-/* ================= API HELPERS ================= */
+/* ================= API HELPERS (Supabase) =================
+   Giữ nguyên interface action-based cũ (apiGet/apiPost) để KHÔNG phải
+   sửa lại toàn bộ phần còn lại của app — chỉ đổi cách 2 hàm này thực thi,
+   từ gọi Google Apps Script sang gọi thẳng Supabase. currentRid vẫn được
+   dùng để lọc dữ liệu theo đúng quán đang chọn. ============= */
+function safeJSONStr(v, fallback){ try{ const r = JSON.parse(v); return r; }catch(e){ return fallback; } }
+
 async function apiGet(params){
-  const qs = new URLSearchParams(params).toString();
-  const res = await fetch(API_URL + '?' + qs);
-  return res.json();
+  try{
+    if (params.action === 'getAll') return await sbGetAll();
+    if (params.action === 'getCheckin'){
+      const { data, error } = await sb.from('checkin').select('*').eq('restaurantId', currentRid).eq('date', params.date);
+      if (error) throw error;
+      return { ok:true, checkin:data };
+    }
+    if (params.action === 'getStocktake'){
+      const { data, error } = await sb.from('stocktake').select('*').eq('restaurantId', currentRid).eq('date', params.date);
+      if (error) throw error;
+      return { ok:true, stocktake:data };
+    }
+    if (params.action === 'listRestaurants'){
+      const { data, error } = await sb.from('restaurants').select('id,name,address,active').eq('active', true);
+      if (error) throw error;
+      return { ok:true, restaurants:data };
+    }
+    if (params.action === 'listRestaurantsFull'){
+      const { data, error } = await sb.from('restaurants').select('*');
+      if (error) throw error;
+      return { ok:true, restaurants:data };
+    }
+    return { ok:false, error:'unknown action' };
+  } catch(err){ return { ok:false, error:String(err.message||err) }; }
 }
+
+async function sbGetAll(){
+  const rid = currentRid;
+  const [menuR, ordersR, invR, staffR, restR] = await Promise.all([
+    sb.from('menu').select('*').eq('restaurantId', rid),
+    sb.from('orders').select('*').eq('restaurantId', rid),
+    sb.from('inventory').select('*').eq('restaurantId', rid),
+    sb.from('staff').select('*').eq('restaurantId', rid),
+    sb.from('restaurants').select('*').eq('id', rid).maybeSingle()
+  ]);
+  if (menuR.error) throw menuR.error;
+  if (ordersR.error) throw ordersR.error;
+  if (invR.error) throw invR.error;
+  if (staffR.error) throw staffR.error;
+  if (restR.error) throw restR.error;
+  const orders = (ordersR.data||[]).map(o => ({ ...o, items: safeJSONStr(o.items, []) }));
+  return { ok:true, menu:menuR.data, orders, inventory:invR.data, staff:staffR.data, restaurant: restR.data || {} };
+}
+
 async function apiPost(body){
-  // dùng text/plain để tránh CORS preflight với Apps Script
-  const res = await fetch(API_URL, { method:'POST', headers:{'Content-Type':'text/plain;charset=utf-8'}, body: JSON.stringify(body) });
-  return res.json();
+  try{
+    switch(body.action){
+      case 'addOrder': return await sbAddOrder(body);
+      case 'updateOrderStatus': return await sbUpdateOrderStatus(body);
+      case 'addFeedback': {
+        const { error } = await sb.from('feedback').insert({ restaurantId: currentRid, orderId:body.orderId, table:body.table, rating:body.rating, comment:body.comment||'', createdAt: Date.now() });
+        if (error) throw error;
+        return { ok:true };
+      }
+      case 'saveMenuItem': return await sbSaveMenuItem(body);
+      case 'deleteMenuItem': { const { error } = await sb.from('menu').delete().eq('id', body.id).eq('restaurantId', currentRid); if(error) throw error; return {ok:true}; }
+      case 'saveInventoryItem': return await sbSaveInventoryItem(body);
+      case 'deleteInventoryItem': { const { error } = await sb.from('inventory').delete().eq('id', body.id).eq('restaurantId', currentRid); if(error) throw error; return {ok:true}; }
+      case 'saveStocktake': return await sbSaveStocktake(body);
+      case 'addStaff': { const { data, error } = await sb.from('staff').insert({ restaurantId: currentRid, name:body.name, pin:body.pin }).select().single(); if(error) throw error; return {ok:true, id:data.id}; }
+      case 'deleteStaff': { const { error } = await sb.from('staff').delete().eq('id', body.id).eq('restaurantId', currentRid); if(error) throw error; return {ok:true}; }
+      case 'checkIn': return await sbCheckIn(body);
+      case 'checkOut': return await sbCheckOut(body);
+      case 'saveSettings': return await sbSaveSettings(body);
+      case 'login': return await sbLogin(body);
+      case 'masterLogin': return await sbMasterLogin(body);
+      case 'changeMasterPin': return await sbChangeMasterPin(body);
+      case 'saveRestaurant': return await sbSaveRestaurant(body);
+      case 'deleteRestaurant': { const { error } = await sb.from('restaurants').delete().eq('id', body.id); if(error) throw error; return {ok:true}; }
+      default: return { ok:false, error:'unknown action' };
+    }
+  } catch(err){ return { ok:false, error:String(err.message||err) }; }
+}
+
+async function sbAddOrder(body){
+  const now = Date.now();
+  const { data, error } = await sb.from('orders').insert({
+    restaurantId: currentRid, table: body.table, items: JSON.stringify(body.items), total: body.total,
+    note: body.note||'', status:'pending', createdAt: now, updatedAt: now
+  }).select().single();
+  if (error) throw error;
+  return { ok:true, id:data.id };
+}
+
+async function sbUpdateOrderStatus(body){
+  const { error } = await sb.from('orders').update({ status: body.status, updatedAt: Date.now() }).eq('id', body.id).eq('restaurantId', currentRid);
+  if (error) throw error;
+  return { ok:true };
+}
+
+async function sbSaveMenuItem(body){
+  const row = {
+    name: body.name, price: body.price, category: body.category, available: body.available,
+    image: body.image||'', sizes: body.sizes||'[]', spicyMax: body.spicyMax||0, toppings: body.toppings||'[]'
+  };
+  if (body.id){
+    const { error } = await sb.from('menu').update(row).eq('id', body.id).eq('restaurantId', currentRid);
+    if (error) throw error;
+    return { ok:true, id:body.id };
+  }
+  const { data, error } = await sb.from('menu').insert({ ...row, restaurantId: currentRid }).select().single();
+  if (error) throw error;
+  return { ok:true, id:data.id };
+}
+
+async function sbSaveInventoryItem(body){
+  const row = { name: body.name, qty: body.qty, unit: body.unit, minQty: body.minQty };
+  if (body.id){
+    const { error } = await sb.from('inventory').update(row).eq('id', body.id).eq('restaurantId', currentRid);
+    if (error) throw error;
+    return { ok:true, id:body.id };
+  }
+  const { data, error } = await sb.from('inventory').insert({ ...row, restaurantId: currentRid }).select().single();
+  if (error) throw error;
+  return { ok:true, id:data.id };
+}
+
+async function sbSaveStocktake(body){
+  await sb.from('stocktake').delete().eq('restaurantId', currentRid).eq('date', body.date);
+  for (const en of body.entries){
+    await sb.from('stocktake').insert({ restaurantId: currentRid, date: body.date, itemId: en.itemId, systemQty: en.systemQty, actualQty: en.actualQty, diff: en.actualQty - en.systemQty });
+    await sb.from('inventory').update({ qty: en.actualQty }).eq('id', en.itemId).eq('restaurantId', currentRid);
+  }
+  return { ok:true };
+}
+
+async function sbCheckIn(body){
+  const { data: existing } = await sb.from('checkin').select('*').eq('restaurantId', currentRid).eq('date', body.date).eq('staffId', body.staffId).maybeSingle();
+  if (existing){
+    const { error } = await sb.from('checkin').update({ checkIn: Date.now() }).eq('restaurantId', currentRid).eq('date', body.date).eq('staffId', body.staffId);
+    if (error) throw error;
+  } else {
+    const { error } = await sb.from('checkin').insert({ restaurantId: currentRid, date: body.date, staffId: body.staffId, name: body.name, checkIn: Date.now() });
+    if (error) throw error;
+  }
+  return { ok:true };
+}
+
+async function sbCheckOut(body){
+  const { data: existing } = await sb.from('checkin').select('*').eq('restaurantId', currentRid).eq('date', body.date).eq('staffId', body.staffId).maybeSingle();
+  if (!existing) return { ok:false, error:'Chưa check-in' };
+  const { error } = await sb.from('checkin').update({ checkOut: Date.now() }).eq('restaurantId', currentRid).eq('date', body.date).eq('staffId', body.staffId);
+  if (error) throw error;
+  return { ok:true };
+}
+
+async function sbSaveSettings(body){
+  const { adminPin, staffPin, action, ...rest } = body;
+  if (adminPin || staffPin){
+    const { error } = await sb.rpc('set_restaurant_pins', { p_rid: currentRid, p_admin_pin: adminPin||null, p_staff_pin: staffPin||null });
+    if (error) throw error;
+  }
+  if (Object.keys(rest).length){
+    const { error } = await sb.from('restaurants').update(rest).eq('id', currentRid);
+    if (error) throw error;
+  }
+  return { ok:true };
+}
+
+async function sbLogin(body){
+  const { data, error } = await sb.rpc('check_login', { p_rid: currentRid, p_pin: String(body.pin) });
+  if (error) return { ok:false, error:String(error.message||error) };
+  const row = Array.isArray(data) ? data[0] : data;
+  if (row && row.ok) return { ok:true, role: row.role };
+  return { ok:false };
+}
+
+async function sbMasterLogin(body){
+  const { data, error } = await sb.rpc('master_login', { p_pin: String(body.pin) });
+  if (error) return { ok:false, error:String(error.message||error) };
+  return { ok: !!data };
+}
+
+async function sbChangeMasterPin(body){
+  const { data, error } = await sb.rpc('set_master_pin', { p_old_pin: String(body.oldPin), p_new_pin: String(body.newPin) });
+  if (error) return { ok:false, error:String(error.message||error) };
+  return { ok: !!data };
+}
+
+async function sbSaveRestaurant(body){
+  const { adminPin, staffPin, action, id, ...rest } = body;
+  let rid = id;
+  if (id){
+    const { error } = await sb.from('restaurants').update(rest).eq('id', id);
+    if (error) throw error;
+  } else {
+    const { data, error } = await sb.from('restaurants').insert({ ...rest, createdAt: Date.now() }).select().single();
+    if (error) throw error;
+    rid = data.id;
+  }
+  if (adminPin || staffPin || !id){
+    const { error } = await sb.rpc('set_restaurant_pins', { p_rid: rid, p_admin_pin: adminPin||null, p_staff_pin: staffPin||null });
+    if (error) throw error;
+  }
+  return { ok:true, id:rid };
 }
 
 let polling = false;
 async function fetchAll(){
-  if (!isConfigured) return;
+  if (!isConfigured || !currentRid) return;
   const dot = document.getElementById('syncDot');
   dot.classList.remove('hidden');
   try {
@@ -605,7 +895,7 @@ async function fetchAll(){
       ordersMap = toMap(data.orders);
       inventoryItems = toMap(data.inventory);
       staffList = toMap(data.staff);
-      settings = data.settings || {};
+      restaurantInfo = data.restaurant || {};
       onDataUpdate();
     }
   } catch(err){ console.error('Lỗi đồng bộ:', err); }
@@ -613,26 +903,28 @@ async function fetchAll(){
 }
 
 function onDataUpdate(){
-  document.getElementById('restName').textContent = '🍜 ' + (settings.restaurantName || 'Quán Ăn');
-  document.getElementById('setRestName').value = settings.restaurantName || '';
-  document.getElementById('setRestAddr').value = settings.restaurantAddress || '';
-  document.getElementById('setRestTagline').value = settings.restaurantTagline || '';
-  document.getElementById('setLogo1').value = settings.splashLogo1 || '';
-  document.getElementById('setLogo2').value = settings.splashLogo2 || '';
-  document.getElementById('setLogo3').value = settings.splashLogo3 || '';
+  document.getElementById('restName').textContent = '🍜 ' + (restaurantInfo.name || 'Quán Ăn');
+  document.getElementById('setRestName').value = restaurantInfo.name || '';
+  document.getElementById('setRestAddr').value = restaurantInfo.address || '';
+  document.getElementById('setRestTagline').value = restaurantInfo.tagline || '';
+  document.getElementById('setLogo1').value = restaurantInfo.logo1 || '';
+  document.getElementById('setLogo2').value = restaurantInfo.logo2 || '';
+  document.getElementById('setLogo3').value = restaurantInfo.logo3 || '';
   [1,2,3].forEach(i=>{
-    const url = settings['splashLogo'+i]; const prev = document.getElementById('setLogo'+i+'Prev');
+    const url = restaurantInfo['logo'+i]; const prev = document.getElementById('setLogo'+i+'Prev');
     if (url) { prev.src = url; prev.style.display='block'; } else { prev.style.display='none'; }
   });
-  document.getElementById('setWalletUrl').value = settings.walletUrl || '';
-  document.getElementById('setRestLat').value = settings.restLat || '';
-  document.getElementById('setRestLng').value = settings.restLng || '';
+  document.getElementById('setWalletUrl').value = restaurantInfo.walletUrl || '';
+  document.getElementById('setRestLat').value = restaurantInfo.lat || '';
+  document.getElementById('setRestLng').value = restaurantInfo.lng || '';
   [1,2,3,4,5].forEach(i=>{
-    document.getElementById('setPhoneLabel'+i).value = settings['phoneLabel'+i] || '';
-    document.getElementById('setPhone'+i).value = settings['phone'+i] || '';
-    document.getElementById('setFbLabel'+i).value = settings['fbLabel'+i] || '';
-    document.getElementById('setFb'+i).value = settings['fb'+i] || '';
+    document.getElementById('setPhoneLabel'+i).value = restaurantInfo['phoneLabel'+i] || '';
+    document.getElementById('setPhone'+i).value = restaurantInfo['phone'+i] || '';
+    document.getElementById('setFbLabel'+i).value = restaurantInfo['fbLabel'+i] || '';
+    document.getElementById('setFb'+i).value = restaurantInfo['fb'+i] || '';
   });
+  const checkinLink = document.getElementById('checkinQuickLink');
+  if (checkinLink) checkinLink.href = '?checkin=1&r=' + encodeURIComponent(currentRid);
   if (!document.getElementById('scr-splash').classList.contains('hidden')) renderSplash();
   if (!document.getElementById('scr-menu').classList.contains('hidden')) renderMenu();
   if (!document.getElementById('scr-track').classList.contains('hidden')) renderTrackFromState();
@@ -643,27 +935,27 @@ function onDataUpdate(){
 }
 
 function renderSplash(){
-  document.getElementById('splashName').textContent = settings.restaurantName || 'Quán Ăn';
+  document.getElementById('splashName').textContent = restaurantInfo.name || 'Quán Ăn';
   const addrEl = document.getElementById('splashAddr');
-  addrEl.textContent = settings.restaurantAddress || '';
-  addrEl.classList.toggle('hidden', !settings.restaurantAddress);
+  addrEl.textContent = restaurantInfo.address || '';
+  addrEl.classList.toggle('hidden', !restaurantInfo.address);
   const tagEl = document.getElementById('splashTagline');
-  tagEl.textContent = settings.restaurantTagline || '';
-  tagEl.classList.toggle('hidden', !settings.restaurantTagline);
-  const logos = [settings.splashLogo1, settings.splashLogo2, settings.splashLogo3].filter(Boolean);
+  tagEl.textContent = restaurantInfo.tagline || '';
+  tagEl.classList.toggle('hidden', !restaurantInfo.tagline);
+  const logos = [restaurantInfo.logo1, restaurantInfo.logo2, restaurantInfo.logo3].filter(Boolean);
   const wrap = document.getElementById('splashLogos');
   wrap.innerHTML = logos.length
     ? logos.map(url => `<div class="splash-logo"><img src="${url}" alt=""></div>`).join('')
     : ['🍜','🥤','🍰'].map(e => `<div class="splash-logo splash-logo-emoji">${e}</div>`).join('');
 
   const phoneBtns = [1,2,3,4,5].map(i=>{
-    const num = settings['phone'+i]; if (!num) return '';
-    const label = settings['phoneLabel'+i] || num;
+    const num = restaurantInfo['phone'+i]; if (!num) return '';
+    const label = restaurantInfo['phoneLabel'+i] || num;
     return `<a class="contact-btn" href="tel:${num.replace(/\s+/g,'')}">📞 ${label}</a>`;
   }).join('');
   const fbBtns = [1,2,3,4,5].map(i=>{
-    const url = settings['fb'+i]; if (!url) return '';
-    const label = settings['fbLabel'+i] || ('Facebook' + (i>1?' '+i:''));
+    const url = restaurantInfo['fb'+i]; if (!url) return '';
+    const label = restaurantInfo['fbLabel'+i] || ('Facebook' + (i>1?' '+i:''));
     return `<a class="contact-btn fb" href="${url}" target="_blank" rel="noopener">📘 ${label}</a>`;
   }).join('');
   document.getElementById('splashContact').innerHTML = phoneBtns + fbBtns;
@@ -673,12 +965,29 @@ function startPolling(){
   if (polling) return;
   polling = true;
   fetchAll();
-  setInterval(fetchAll, 4000);
+  setInterval(fetchAll, 20000); // dự phòng, phòng khi mất kết nối realtime
+  startRealtime();
+}
+
+/* ---- ĐỒNG BỘ THỜI GIAN THỰC (Supabase Realtime) ----
+   Có thay đổi (đơn mới, đổi trạng thái, sửa menu...) trên bất kỳ quán nào
+   là đồng bộ lại ngay; fetchAll() luôn lọc theo currentRid nên vô hại nếu
+   sự kiện đến từ quán khác. Vòng poll 20s ở trên vẫn giữ làm dự phòng. */
+let realtimeStarted = false;
+function startRealtime(){
+  if (!isConfigured || realtimeStarted) return;
+  realtimeStarted = true;
+  sb.channel('quanan-chuoi-sync')
+    .on('postgres_changes', { event:'*', schema:'public', table:'orders' }, fetchAll)
+    .on('postgres_changes', { event:'*', schema:'public', table:'menu' }, fetchAll)
+    .on('postgres_changes', { event:'*', schema:'public', table:'inventory' }, fetchAll)
+    .on('postgres_changes', { event:'*', schema:'public', table:'restaurants' }, fetchAll)
+    .subscribe();
 }
 
 /* ================= ROUTER ================= */
 function hideAllScreens(){
-  ['scr-splash','scr-table','scr-menu','scr-cart','scr-track','scr-admin-login','scr-admin','scr-checkin']
+  ['scr-restlist','scr-master-login','scr-master','scr-splash','scr-table','scr-menu','scr-cart','scr-track','scr-admin-login','scr-admin','scr-checkin']
     .forEach(id=>document.getElementById(id).classList.add('hidden'));
   document.getElementById('cartBar').classList.add('hidden');
   document.getElementById('hdBar').classList.remove('hidden');
@@ -699,18 +1008,36 @@ function fromSplash(){
 
 function boot(){
   if (!isConfigured) { hideAllScreens(); return; }
-  startPolling();
-
   const params = new URLSearchParams(location.search);
+
+  const rParam = params.get('r');
+  if (rParam && rParam !== currentRid) {
+    // Đang chuyển sang ngữ cảnh 1 quán khác -> reset giỏ hàng/bàn/phiên quản lý cũ
+    currentRid = rParam;
+    localStorage.setItem('qa_rid', rParam);
+    localStorage.removeItem('qa_table'); localStorage.removeItem('qa_orderId');
+    currentTable = ''; currentOrderId = null;
+    isAdmin = false; mgmtRole = '';
+    sessionStorage.removeItem('qa_isAdmin'); sessionStorage.removeItem('qa_role');
+  }
   const t = params.get('table');
   if (t) { currentTable = t; localStorage.setItem('qa_table', t); }
 
-  if (params.get('checkin') === '1') { showCheckinScreen(); return; }
-  if (params.get('admin') === '1' && !isAdmin) { goAdminLogin(); return; }
-  if (isAdmin) { showAdmin(); return; }
-  if (currentOrderId) { showTrack(); return; }
+  if (params.get('master') === '1') { showMasterLogin(); return; }
 
-  showSplash();
+  if (params.get('checkin') === '1') {
+    if (!currentRid) { showRestaurantList(); return; }
+    startPolling(); showCheckinScreen(); return;
+  }
+  if (params.get('admin') === '1' && !isAdmin) {
+    if (!currentRid) { showRestaurantList(); return; }
+    startPolling(); goAdminLogin(); return;
+  }
+  if (isAdmin && currentRid) { startPolling(); showAdmin(); return; }
+  if (currentOrderId && currentRid) { startPolling(); showTrack(); return; }
+  if (currentRid) { startPolling(); showSplash(); return; }
+
+  showRestaurantList();
 }
 
 function confirmTable(){
@@ -723,6 +1050,157 @@ function confirmTable(){
 
 function goCustomer(){ isAdmin=false; sessionStorage.removeItem('qa_isAdmin'); boot(); }
 function goAdminLogin(){ hideAllScreens(); document.getElementById('scr-admin-login').classList.remove('hidden'); }
+
+/* ================= CHỌN QUÁN (trung tâm nhiều quán) ================= */
+async function showRestaurantList(){
+  hideAllScreens();
+  document.getElementById('hdBar').classList.add('hidden');
+  document.getElementById('scr-restlist').classList.remove('hidden');
+  document.getElementById('restListBox').innerHTML = '<p class="muted">Đang tải danh sách quán...</p>';
+  let data;
+  try { data = await apiGet({action:'listRestaurants'}); }
+  catch(err){ document.getElementById('restListBox').innerHTML = '<p class="muted">Không kết nối được tới máy chủ.</p>'; return; }
+  restaurantsPublic = toMap(data.restaurants||[]);
+  const entries = Object.values(restaurantsPublic);
+  if (entries.length === 1) { selectRestaurant(entries[0].id); return; }
+  if (entries.length === 0) {
+    document.getElementById('restListBox').innerHTML = '<p class="muted">Chưa có quán nào. Chủ chuỗi bấm 🔒 để đăng nhập và tạo quán đầu tiên.</p>';
+    return;
+  }
+  document.getElementById('restListBox').innerHTML = entries.map(r=>`
+    <div class="card" style="cursor:pointer" onclick="selectRestaurant('${r.id}')">
+      <div class="card-title">🍜 ${r.name||'Quán'}</div>
+      <p class="muted">${r.address||''}</p>
+    </div>`).join('');
+}
+function selectRestaurant(id){
+  currentRid = id;
+  localStorage.setItem('qa_rid', id);
+  boot();
+}
+function goRestaurantList(){
+  currentRid = '';
+  localStorage.removeItem('qa_rid'); localStorage.removeItem('qa_table'); localStorage.removeItem('qa_orderId');
+  currentTable = ''; currentOrderId = null;
+  isAdmin = false; mgmtRole = '';
+  sessionStorage.removeItem('qa_isAdmin'); sessionStorage.removeItem('qa_role');
+  history.replaceState(null, '', location.pathname);
+  showRestaurantList();
+}
+
+/* ================= CHỦ CHUỖI (MASTER) ================= */
+function showMasterLogin(){
+  hideAllScreens();
+  document.getElementById('hdBar').classList.add('hidden');
+  if (isMaster) { showMasterDashboard(); return; }
+  document.getElementById('scr-master-login').classList.remove('hidden');
+}
+async function masterLogin(){
+  const pin = document.getElementById('inpMasterPin').value.trim();
+  let res;
+  try { res = await apiPost({action:'masterLogin', pin}); }
+  catch(err){ return alert('Lỗi kết nối: ' + (err && err.message ? err.message : err)); }
+  if (!res || !res.ok) return alert('Sai mã chủ chuỗi!');
+  isMaster = true;
+  sessionStorage.setItem('qa_isMaster','1');
+  document.getElementById('inpMasterPin').value='';
+  showMasterDashboard();
+}
+function masterLogout(){
+  isMaster = false;
+  sessionStorage.removeItem('qa_isMaster');
+  showRestaurantList();
+}
+async function showMasterDashboard(){
+  hideAllScreens();
+  document.getElementById('hdBar').classList.add('hidden');
+  document.getElementById('scr-master').classList.remove('hidden');
+  await loadMasterRestaurants();
+}
+async function loadMasterRestaurants(){
+  const res = await apiGet({action:'listRestaurantsFull'});
+  masterRestaurants = toMap(res.restaurants||[]);
+  renderMasterList();
+}
+function renderMasterList(){
+  const entries = Object.values(masterRestaurants);
+  const list = document.getElementById('masterRestList');
+  if (!entries.length){ list.innerHTML = '<p class="muted">Chưa có quán nào.</p>'; return; }
+  list.innerHTML = entries.map(r=>{
+    const inactive = r.active===false || r.active==='FALSE';
+    return `<div class="card">
+      <div class="card-title">🍜 ${r.name||'(chưa đặt tên)'} ${inactive?'<span class="muted">· đã tắt</span>':''}</div>
+      <p class="muted">${r.address||''}</p>
+      <div class="row" style="margin-top:8px">
+        <button class="btn btn-outline btn-sm" onclick="openRestaurantModal('${r.id}')">✏️ Sửa</button>
+        <button class="btn btn-blue btn-sm" onclick="enterRestaurantAsMaster('${r.id}')">🔑 Vào quản lý</button>
+      </div>
+    </div>`;
+  }).join('');
+}
+async function changeMasterPin(){
+  const oldPin = document.getElementById('mpOld').value.trim();
+  const newPin = document.getElementById('mpNew').value.trim();
+  const newPin2 = document.getElementById('mpNew2').value.trim();
+  if (!oldPin || !newPin) return alert('Nhập đủ mã hiện tại và mã mới!');
+  if (newPin !== newPin2) return alert('Mã mới nhập lại không khớp!');
+  if (newPin.length < 4) return alert('Mã mới nên có ít nhất 4 ký tự!');
+  let res;
+  try { res = await apiPost({action:'changeMasterPin', oldPin, newPin}); }
+  catch(err){ return alert('Lỗi kết nối: ' + (err && err.message ? err.message : err)); }
+  if (!res || !res.ok) return alert('Sai mã chủ chuỗi hiện tại, không đổi được!');
+  document.getElementById('mpOld').value='';
+  document.getElementById('mpNew').value='';
+  document.getElementById('mpNew2').value='';
+  alert('Đã đổi mã chủ chuỗi thành công!');
+}
+function enterRestaurantAsMaster(id){
+  currentRid = id;
+  localStorage.setItem('qa_rid', id);
+  isAdmin = true; mgmtRole = 'admin';
+  sessionStorage.setItem('qa_isAdmin','1'); sessionStorage.setItem('qa_role','admin');
+  startPolling();
+  showAdmin();
+}
+function openRestaurantModal(id){
+  const r = id ? masterRestaurants[id] : {};
+  document.getElementById('mrId').value = id||'';
+  document.getElementById('mrName').value = r?.name||'';
+  document.getElementById('mrAddr').value = r?.address||'';
+  document.getElementById('mrAdminPin').value = id ? '' : '1234';
+  document.getElementById('mrStaffPin').value = id ? '' : '5678';
+  document.getElementById('mrAdminPin').placeholder = id ? 'Để trống = giữ nguyên PIN cũ' : 'Mặc định 1234';
+  document.getElementById('mrStaffPin').placeholder = id ? 'Để trống = giữ nguyên PIN cũ' : 'Mặc định 5678';
+  document.getElementById('mrActive').checked = !(r?.active===false || r?.active==='FALSE');
+  document.getElementById('mrDeleteBtn').style.display = id ? 'block':'none';
+  document.getElementById('modalRestaurant').classList.add('active');
+}
+async function saveRestaurantMaster(){
+  const id = document.getElementById('mrId').value;
+  const data = {
+    action:'saveRestaurant', id: id||undefined,
+    name: document.getElementById('mrName').value.trim(),
+    address: document.getElementById('mrAddr').value.trim(),
+    active: document.getElementById('mrActive').checked
+  };
+  const newAdminPin = document.getElementById('mrAdminPin').value.trim();
+  const newStaffPin = document.getElementById('mrStaffPin').value.trim();
+  if (newAdminPin) data.adminPin = newAdminPin;
+  if (newStaffPin) data.staffPin = newStaffPin;
+  if (!data.name) return alert('Nhập tên quán!');
+  await apiPost(data);
+  closeModal('modalRestaurant');
+  loadMasterRestaurants();
+}
+async function deleteRestaurantMaster(){
+  const id = document.getElementById('mrId').value;
+  if (!id) return;
+  if (confirm('Xóa quán này khỏi danh sách? Dữ liệu món/đơn/kho cũ của quán sẽ không hiện ra nữa (không tự xóa hẳn) - chỉ nên xóa quán tạo nhầm.')) {
+    await apiPost({action:'deleteRestaurant', id});
+    closeModal('modalRestaurant');
+    loadMasterRestaurants();
+  }
+}
 
 /* ================= CUSTOMER: MENU ================= */
 function showMenu(){
@@ -1023,8 +1501,8 @@ function haversineMeters(lat1, lon1, lat2, lon2){
 const STAFF_LOGIN_RADIUS_M = 20;
 function checkStaffLocation(){
   return new Promise(resolve => {
-    const rLat = parseFloat(settings.restLat);
-    const rLng = parseFloat(settings.restLng);
+    const rLat = parseFloat(restaurantInfo.lat);
+    const rLng = parseFloat(restaurantInfo.lng);
     if (!rLat && rLat !== 0 || !rLng && rLng !== 0){
       alert('Chủ quán chưa cài đặt vị trí quán (mục ⚙️ Cài đặt), nên chưa thể đăng nhập nhân viên bằng định vị.');
       return resolve(false);
@@ -1096,7 +1574,7 @@ function showAdmin(){
   document.getElementById('checkinDate').value = todayStr();
   loadStocktake(); loadCheckinHistory();
 
-  const base = settings.publicUrl || (location.origin + location.pathname);
+  const base = location.origin + location.pathname + '?r=' + encodeURIComponent(currentRid);
   document.getElementById('qrLink').textContent = base;
   document.getElementById('qrCustomer').src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(base);
 }
@@ -1175,6 +1653,34 @@ let miSizesArr = [], miToppingsArr = [];
 
 function toggleMiBlock(blockId, show){ document.getElementById(blockId).classList.toggle('hidden', !show); }
 
+function escHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+function renderMiCatChips(){
+  const el = document.getElementById('miCatChips'); if (!el) return;
+  const cats = [...new Set(Object.values(menuItems).map(m=>(m.category||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi'));
+  el.innerHTML = cats.length ? cats.map(c=>`<div class="chip" onclick="pickMiCatChip(this)">${escHtml(c)}</div>`).join('')
+    : '<span class="muted" style="font-size:12px">Chưa có danh mục nào được lưu</span>';
+}
+function pickMiCatChip(el){ document.getElementById('miCat').value = el.textContent; }
+
+function renderMiToppingChips(){
+  const el = document.getElementById('miToppingChips'); if (!el) return;
+  const map = {};
+  Object.values(menuItems).forEach(m=>{
+    safeJSON(m.toppings, []).forEach(t=>{ if (t && t.name && t.name.trim()) map[t.name.trim()] = Number(t.price)||0; });
+  });
+  const names = Object.keys(map).sort((a,b)=>a.localeCompare(b,'vi'));
+  el.innerHTML = names.length ? names.map(n=>
+    `<div class="chip" onclick="pickMiToppingChip(this)" data-name="${escHtml(n)}" data-price="${map[n]}">${escHtml(n)} <span style="opacity:.75">+${money(map[n])}</span></div>`
+  ).join('') : '<span class="muted" style="font-size:12px">Chưa có topping nào được lưu</span>';
+}
+function pickMiToppingChip(el){
+  const name = el.dataset.name, price = Number(el.dataset.price)||0;
+  if (miToppingsArr.some(t=>(t.name||'').trim().toLowerCase()===name.toLowerCase())) return;
+  miToppingsArr.push({ name, price });
+  renderMiToppingRows();
+}
+
 function renderMiSizeRows(){
   document.getElementById('miSizeRows').innerHTML = miSizesArr.map((s,i)=>`
     <div class="dyn-row">
@@ -1209,19 +1715,28 @@ function openMenuItemModal(id){
   const prev = document.getElementById('miImagePrev');
   if (m?.image) { prev.src = m.image; prev.style.display='block'; } else prev.style.display='none';
 
-  miSizesArr = e.sizes.length ? JSON.parse(JSON.stringify(e.sizes)) : [];
-  document.getElementById('miHasSize').checked = miSizesArr.length>0;
-  toggleMiBlock('miSizeBlock', miSizesArr.length>0);
+  const sizesCopy = e.sizes.length ? JSON.parse(JSON.stringify(e.sizes)) : [];
+  const mSize = sizesCopy.find(s=>(s.name||'').trim().toUpperCase()==='M');
+  const lSize = sizesCopy.find(s=>(s.name||'').trim().toUpperCase()==='L');
+  miSizesArr = sizesCopy.filter(s=>s!==mSize && s!==lSize);
+  document.getElementById('miSizeM').checked = !!mSize;
+  document.getElementById('miSizeMPrice').value = mSize ? mSize.price : '';
+  document.getElementById('miSizeL').checked = !!lSize;
+  document.getElementById('miSizeLPrice').value = lSize ? lSize.price : '';
+  document.getElementById('miHasSize').checked = sizesCopy.length>0;
+  toggleMiBlock('miSizeBlock', sizesCopy.length>0);
   renderMiSizeRows();
 
   document.getElementById('miHasSpicy').checked = e.spicyMax>0;
   toggleMiBlock('miSpicyBlock', e.spicyMax>0);
-  document.getElementById('miSpicyMax').value = e.spicyMax>0 ? e.spicyMax : 7;
+  document.getElementById('miSpicyMax').value = 7;
 
   miToppingsArr = e.toppings.length ? JSON.parse(JSON.stringify(e.toppings)) : [];
   document.getElementById('miHasTopping').checked = miToppingsArr.length>0;
   toggleMiBlock('miToppingBlock', miToppingsArr.length>0);
   renderMiToppingRows();
+  renderMiCatChips();
+  renderMiToppingChips();
 
   document.getElementById('miDeleteBtn').style.display = id ? 'block':'none';
   document.getElementById('modalMenuItem').classList.add('active');
@@ -1231,9 +1746,15 @@ async function saveMenuItem(){
   const hasSize = document.getElementById('miHasSize').checked;
   const hasSpicy = document.getElementById('miHasSpicy').checked;
   const hasTopping = document.getElementById('miHasTopping').checked;
-  const sizes = hasSize ? miSizesArr.filter(s=>s.name && s.name.trim()) : [];
+  const quickSizes = [];
+  if (hasSize){
+    if (document.getElementById('miSizeM').checked) quickSizes.push({name:'M', price: parseFloat(document.getElementById('miSizeMPrice').value)||0});
+    if (document.getElementById('miSizeL').checked) quickSizes.push({name:'L', price: parseFloat(document.getElementById('miSizeLPrice').value)||0});
+  }
+  const sizes = hasSize ? [...quickSizes, ...miSizesArr.filter(s=>s.name && s.name.trim())] : [];
   const toppings = hasTopping ? miToppingsArr.filter(t=>t.name && t.name.trim()) : [];
-  const spicyMax = hasSpicy ? (parseInt(document.getElementById('miSpicyMax').value)||7) : 0;
+  const spicyMax = hasSpicy ? 7 : 0;
+  if (hasSize && sizes.length===0) return alert('Tick chọn ít nhất 1 size (M/L) hoặc thêm size khác!');
 
   const data = {
     action:'saveMenuItem', id: id||undefined,
@@ -1455,7 +1976,7 @@ async function staffCheckOut(){
 
 /* ---- CỔNG NGẦM SANG APP VÍ ---- */
 function openWallet(){
-  const url = (settings.walletUrl || '').trim();
+  const url = (restaurantInfo.walletUrl || '').trim();
   if (!url) return; // chưa cấu hình -> im lặng, không lộ ra ngoài
   window.open(url, '_blank');
 }
@@ -1467,18 +1988,18 @@ async function saveWalletUrl(){
 
 /* ---- SETTINGS ---- */
 async function saveRestName(){
-  await apiPost({action:'saveSettings', restaurantName: document.getElementById('setRestName').value.trim()});
+  await apiPost({action:'saveSettings', name: document.getElementById('setRestName').value.trim()});
   fetchAll();
   alert('Đã lưu tên quán!');
 }
 async function saveSplashSettings(){
   const payload = {
     action:'saveSettings',
-    restaurantAddress: document.getElementById('setRestAddr').value.trim(),
-    restaurantTagline: document.getElementById('setRestTagline').value.trim(),
-    splashLogo1: document.getElementById('setLogo1').value.trim(),
-    splashLogo2: document.getElementById('setLogo2').value.trim(),
-    splashLogo3: document.getElementById('setLogo3').value.trim()
+    address: document.getElementById('setRestAddr').value.trim(),
+    tagline: document.getElementById('setRestTagline').value.trim(),
+    logo1: document.getElementById('setLogo1').value.trim(),
+    logo2: document.getElementById('setLogo2').value.trim(),
+    logo3: document.getElementById('setLogo3').value.trim()
   };
   [1,2,3,4,5].forEach(i=>{
     payload['phoneLabel'+i] = document.getElementById('setPhoneLabel'+i).value.trim();
@@ -1508,7 +2029,7 @@ async function saveRestaurantLocation(){
   const lat = document.getElementById('setRestLat').value.trim();
   const lng = document.getElementById('setRestLng').value.trim();
   if (!lat || !lng) return alert('Vui lòng nhập/lấy tọa độ trước khi lưu!');
-  await apiPost({action:'saveSettings', restLat: lat, restLng: lng});
+  await apiPost({action:'saveSettings', lat: lat, lng: lng});
   fetchAll();
   alert('Đã lưu vị trí quán!');
 }

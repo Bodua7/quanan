@@ -1,10 +1,35 @@
-# Quán Ăn - Gọi Món & Quản Lý (PWA)
+# Quán Ăn - Gọi Món & Quản Lý (PWA, hỗ trợ NHIỀU quán)
 
-App gọi món qua QR + quản lý quán ăn, chạy hoàn toàn tĩnh (frontend) và dùng
-Google Apps Script + Google Sheets làm backend/database miễn phí.
+App gọi món qua QR + quản lý CHUỖI quán ăn (1 app, 1 backend, quản lý tập
+trung nhiều quán), chạy hoàn toàn tĩnh (frontend) và dùng Google Apps Script +
+Google Sheets làm backend/database miễn phí.
 
-Đã cấu hình sẵn với backend Apps Script của bạn:
-`https://script.google.com/macros/s/AKfycbzsCEgrjPZM6q0OuxRniFuDCf5sywvs-CfJBy_A3bll9_zCKk-17k35BRH2LSPudl54JA/exec`
+## ⚠️ Nâng cấp lên bản nhiều quán (đọc trước khi deploy)
+
+Bản này đổi cấu trúc dữ liệu để 1 Google Sheet + 1 Apps Script quản lý được
+NHIỀU quán cùng lúc (thay vì 1 Sheet = 1 quán như trước):
+
+1. Bạn **bắt buộc phải cập nhật lại `Code_QuanAn.gs`** trên Apps Script (xem
+   mục "Bắt buộc cập nhật lại Apps Script" bên dưới) - nếu bạn đang dùng Sheet
+   cũ, dữ liệu món/đơn/kho/nhân viên cũ sẽ cần được thêm cột `restaurantId`
+   thủ công (điền cùng 1 mã tự chọn, ví dụ `quan1`, cho toàn bộ dòng cũ) rồi
+   thêm 1 dòng tương ứng trong sheet `Restaurants` với `id` trùng mã đó.
+   Nếu quán của bạn còn mới/ít dữ liệu, cách nhanh nhất là **xóa Sheet cũ,
+   tạo Sheet mới trống** rồi làm theo hướng dẫn cài đặt lại từ đầu.
+2. Mở app → bấm 🔒 ở màn "Chọn quán" → đăng nhập **Mã chủ chuỗi** (mặc định
+   `9999`) → bấm **+ Thêm quán mới** để tạo từng quán (tên, địa chỉ, PIN chủ
+   quán/nhân viên riêng cho quán đó).
+3. Sau khi tạo quán, bấm **🔑 Vào quản lý** để vào quản lý quán đó ngay (nhập
+   Thực đơn, ảnh, vị trí GPS, số điện thoại... trong tab ⚙️ Cài đặt), hoặc
+   nhân viên/chủ quán tự đăng nhập bằng PIN của quán đó từ màn "Chọn quán".
+4. Mã QR mỗi quán tự chứa `?r=<mã quán>` (xem trong tab Cài đặt của từng
+   quán) - khách quét đúng mã QR sẽ vào thẳng quán đó, không cần chọn quán.
+5. Nhân viên làm ở nhiều quán: chỉ cần biết PIN nhân viên của từng quán,
+   chọn đúng quán ở màn "Chọn quán" rồi đăng nhập bằng PIN quán đó. Link
+   chấm công riêng theo quán: `?checkin=1&r=<mã quán>` (nút "🕒 Chấm công
+   của tôi" trong khu quản lý đã tự gắn sẵn mã quán đang chọn).
+6. Đổi Mã chủ chuỗi: hiện chưa có UI riêng - sửa trực tiếp giá trị dòng
+   `masterPin` trong sheet `Master` trên Google Sheet của bạn.
 
 ## Cấu trúc thư mục
 ```
