@@ -468,8 +468,14 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
 
       <div class="toggle-row"><input type="checkbox" id="miHasTopping" onchange="toggleMiBlock('miToppingBlock', this.checked)"><label>Có topping thêm</label></div>
       <div class="subcard hidden" id="miToppingBlock">
-        <div class="chip-label">Topping đã lưu (bấm để thêm nhanh)</div>
+        <div class="chip-label">Danh mục topping của quán (bấm để thêm nhanh, bấm ✕ để xóa khỏi danh mục)</div>
         <div class="chip-scroll" id="miToppingChips"></div>
+        <div class="row" style="margin:8px 0">
+          <input id="inpCatalogToppingName" placeholder="Tên topping mới (VD: Trân châu)" style="flex:1">
+          <input id="inpCatalogToppingPrice" type="number" placeholder="Giá" style="max-width:90px">
+          <button type="button" class="tiny-btn" onclick="addToppingToCatalog()">+ Vào danh mục</button>
+        </div>
+        <div class="chip-label" style="margin-top:6px">Topping của món này</div>
         <div id="miToppingRows"></div>
         <button type="button" class="tiny-btn" onclick="addToppingRow()">+ Thêm topping mới</button>
       </div>
@@ -1663,22 +1669,52 @@ function renderMiCatChips(){
 }
 function pickMiCatChip(el){ document.getElementById('miCat').value = el.textContent; }
 
+function getToppingCatalog(){
+  return safeJSON(restaurantInfo && restaurantInfo.toppingCatalog, []);
+}
+async function persistToppingCatalog(list){
+  restaurantInfo.toppingCatalog = JSON.stringify(list);
+  try {
+    await apiPost({ action:'saveRestaurant', id: currentRid, toppingCatalog: JSON.stringify(list) });
+  } catch(err){ alert('Lỗi lưu danh mục topping lên Supabase: ' + (err.message||err)); }
+}
 function renderMiToppingChips(){
   const el = document.getElementById('miToppingChips'); if (!el) return;
-  const map = {};
-  Object.values(menuItems).forEach(m=>{
-    safeJSON(m.toppings, []).forEach(t=>{ if (t && t.name && t.name.trim()) map[t.name.trim()] = Number(t.price)||0; });
-  });
-  const names = Object.keys(map).sort((a,b)=>a.localeCompare(b,'vi'));
-  el.innerHTML = names.length ? names.map(n=>
-    `<div class="chip" onclick="pickMiToppingChip(this)" data-name="${escHtml(n)}" data-price="${map[n]}">${escHtml(n)} <span style="opacity:.75">+${money(map[n])}</span></div>`
-  ).join('') : '<span class="muted" style="font-size:12px">Chưa có topping nào được lưu</span>';
+  const list = getToppingCatalog();
+  el.innerHTML = list.length ? list.map((t,i)=>
+    `<div class="chip" style="display:flex;align-items:center;gap:6px">
+       <span onclick="pickMiToppingChip(${i})" style="cursor:pointer">${escHtml(t.name)} <span style="opacity:.75">+${money(t.price)}</span></span>
+       <span onclick="deleteToppingFromCatalog(${i})" style="opacity:.6">✕</span>
+     </div>`
+  ).join('') : '<span class="muted" style="font-size:12px">Chưa có topping nào trong danh mục - thêm ở ô bên dưới</span>';
 }
-function pickMiToppingChip(el){
-  const name = el.dataset.name, price = Number(el.dataset.price)||0;
-  if (miToppingsArr.some(t=>(t.name||'').trim().toLowerCase()===name.toLowerCase())) return;
-  miToppingsArr.push({ name, price });
+function pickMiToppingChip(i){
+  const list = getToppingCatalog();
+  const t = list[i]; if (!t) return;
+  if (miToppingsArr.some(x=>(x.name||'').trim().toLowerCase()===t.name.trim().toLowerCase())) return;
+  miToppingsArr.push({ name: t.name, price: t.price });
   renderMiToppingRows();
+}
+async function addToppingToCatalog(){
+  const nameEl = document.getElementById('inpCatalogToppingName');
+  const priceEl = document.getElementById('inpCatalogToppingPrice');
+  const name = nameEl.value.trim();
+  const price = parseFloat(priceEl.value) || 0;
+  if (!name) return alert('Nhập tên topping!');
+  const list = getToppingCatalog();
+  if (list.some(t=>(t.name||'').trim().toLowerCase()===name.toLowerCase())) return alert('Topping này đã có trong danh mục!');
+  list.push({ name, price });
+  await persistToppingCatalog(list);
+  nameEl.value=''; priceEl.value='';
+  renderMiToppingChips();
+}
+async function deleteToppingFromCatalog(i){
+  const list = getToppingCatalog();
+  const t = list[i]; if (!t) return;
+  if (!confirm('Xóa "' + t.name + '" khỏi danh mục topping của quán? (Món nào đã dùng topping này vẫn giữ nguyên, chỉ không còn hiện gợi ý nhanh nữa)')) return;
+  list.splice(i,1);
+  await persistToppingCatalog(list);
+  renderMiToppingChips();
 }
 
 function renderMiSizeRows(){
@@ -1768,6 +1804,17 @@ async function saveMenuItem(){
     toppings: JSON.stringify(toppings)
   };
   if (!data.name) return alert('Nhập tên món!');
+  if (toppings.length){
+    const catalog = getToppingCatalog();
+    let changed = false;
+    toppings.forEach(t=>{
+      if (!catalog.some(c=>(c.name||'').trim().toLowerCase()===(t.name||'').trim().toLowerCase())){
+        catalog.push({ name:t.name, price:t.price });
+        changed = true;
+      }
+    });
+    if (changed) await persistToppingCatalog(catalog);
+  }
   await apiPost(data);
   closeModal('modalMenuItem');
   fetchAll();
