@@ -87,8 +87,7 @@ label { font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase
 
 .splash { min-height:100vh; background:linear-gradient(180deg,#fff7ed 0%,#fde7d4 55%,#fef3ec 100%); display:flex; flex-direction:column; align-items:center; padding:28px 20px 40px; position:relative; }
 .splash-lock { position:absolute; top:16px; right:16px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,.75); backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; font-size:17px; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.1); }
-.splash-switch { position:absolute; top:16px; right:64px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,.75); backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; font-size:16px; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.1); }
-.splash-master { position:absolute; top:16px; right:112px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,.75); backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; font-size:16px; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.1); }
+.splash-master { position:absolute; top:16px; right:64px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,.75); backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; font-size:16px; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.1); }
 .splash-logos { display:flex; flex-wrap:wrap; justify-content:center; gap:16px; margin:44px 0 22px; }
 .splash-logo { width:118px; height:118px; border-radius:50%; overflow:hidden; border:3px solid #fff; box-shadow:0 6px 16px rgba(0,0,0,.14); background:#fff; display:flex; align-items:center; justify-content:center; }
 .splash-logo img { width:100%; height:100%; object-fit:cover; }
@@ -202,7 +201,6 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
 
   <!-- TRANG CHÀO KHI QUÉT QR -->
   <div id="scr-splash" class="splash hidden">
-    <div class="splash-switch" onclick="goRestaurantList()" title="Đổi quán">🏬</div>
     <div class="splash-master" onclick="showMasterLogin()" title="Chủ chuỗi">🏢</div>
     <div class="splash-lock" onclick="goAdminLogin()" title="Đăng nhập quản lý">🔒</div>
     <div class="splash-logos" id="splashLogos"></div>
@@ -1747,9 +1745,10 @@ function getToppingCatalog(){
 }
 async function persistToppingCatalog(list){
   restaurantInfo.toppingCatalog = JSON.stringify(list);
-  try {
-    await apiPost({ action:'saveRestaurant', id: currentRid, toppingCatalog: JSON.stringify(list) });
-  } catch(err){ alert('Lỗi lưu danh mục topping lên Supabase: ' + (err.message||err)); }
+  let res;
+  try { res = await apiPost({ action:'saveRestaurant', id: currentRid, toppingCatalog: JSON.stringify(list) }); }
+  catch(err){ return alert('Lỗi lưu danh mục topping lên Supabase: ' + (err && err.message ? err.message : err)); }
+  if (!res || !res.ok) alert('Lỗi lưu danh mục topping lên Supabase: ' + (res && res.error ? res.error : 'lỗi không xác định'));
 }
 function renderMiToppingChips(){
   const el = document.getElementById('miToppingChips'); if (!el) return;
