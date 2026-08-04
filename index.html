@@ -1378,8 +1378,14 @@ function showMenu(){
   updateCartBar();
 }
 
+// Danh mục "Topping" không hiển thị như 1 mục riêng để gọi ở trang menu -
+// topping chỉ nên được chọn làm phần thêm bên trong món nước (qua "Chọn"),
+// không phải 1 món gọi độc lập. Item topping vẫn giữ available=true bình
+// thường để không ảnh hưởng danh mục topping / gợi ý topping bên quản lý.
+function isToppingCategory(cat){ return (cat||'').trim().toLowerCase()==='topping'; }
+
 function renderMenu(){
-  const availableItems = Object.values(menuItems).filter(m=> m.available!==false && m.available!=='FALSE');
+  const availableItems = Object.values(menuItems).filter(m=> m.available!==false && m.available!=='FALSE' && !isToppingCategory(m.category));
   const usedCats = new Set(availableItems.map(m=>m.category||'Khác'));
   const cats = orderedCategoryList().filter(c=>usedCats.has(c));
   usedCats.forEach(c=>{ if (!cats.includes(c)) cats.push(c); });
@@ -1398,6 +1404,7 @@ function filterMenuCat(el, cat){
     el.classList.add('active');
   }
   const list = document.getElementById('menuList');
+  if (isToppingCategory(cat)){ list.innerHTML = '<p class="muted">Chưa có món trong danh mục này.</p>'; return; }
   const entries = Object.entries(menuItems).filter(([id,m])=> (m.category||'Khác')===cat && m.available!==false && m.available!=='FALSE');
   if (entries.length===0){ list.innerHTML = '<p class="muted">Chưa có món trong danh mục này.</p>'; return; }
   list.innerHTML = `<div class="card">` + entries.map(([id,m])=>{
