@@ -745,6 +745,21 @@ async function uploadImageTo(targetInputId, fileInputEl){
    dùng để lọc dữ liệu theo đúng quán đang chọn. ============= */
 function safeJSONStr(v, fallback){ try{ const r = JSON.parse(v); return r; }catch(e){ return fallback; } }
 
+// Link Google Drive kiểu "chia sẻ" (vd .../file/d/ID/view?usp=sharing hoặc
+// drive.google.com/open?id=ID) KHÔNG phải link ảnh trực tiếp nên thẻ <img>
+// không hiện được (chỉ hiện trống trắng). Hàm này tự nhận diện và đổi sang
+// dạng link ảnh xem trực tiếp được (thumbnail), giữ nguyên các link khác
+// (Imgur, ảnh tải thẳng từ Supabase Storage...) không đụng tới.
+function driveToDirectUrl(url){
+  if (!url) return url;
+  const u = String(url).trim();
+  if (!u.includes('drive.google.com')) return u;
+  let m = u.match(/\/file\/d\/([a-zA-Z0-9_-]+)/);
+  if (!m) m = u.match(/[?&]id=([a-zA-Z0-9_-]+)/);
+  if (!m) return u;
+  return `https://drive.google.com/thumbnail?id=${m[1]}&sz=w1000`;
+}
+
 async function apiGet(params){
   try{
     if (params.action === 'getAll') return await sbGetAll();
@@ -1017,7 +1032,7 @@ function renderSplash(){
   const logos = [restaurantInfo.logo1, restaurantInfo.logo2, restaurantInfo.logo3].filter(Boolean);
   const wrap = document.getElementById('splashLogos');
   wrap.innerHTML = logos.length
-    ? logos.map(url => `<div class="splash-logo"><img src="${url}" alt=""></div>`).join('')
+    ? logos.map(url => `<div class="splash-logo"><img src="${driveToDirectUrl(url)}" alt=""></div>`).join('')
     : ['🍜','🥤','🍰'].map(e => `<div class="splash-logo splash-logo-emoji">${e}</div>`).join('');
 
   const phoneBtns = [1,2,3,4,5].map(i=>{
@@ -1331,7 +1346,7 @@ function filterMenuCat(el, cat){
   const entries = Object.entries(menuItems).filter(([id,m])=> (m.category||'Khác')===cat && m.available!==false && m.available!=='FALSE');
   if (entries.length===0){ list.innerHTML = '<p class="muted">Chưa có món trong danh mục này.</p>'; return; }
   list.innerHTML = `<div class="card">` + entries.map(([id,m])=>{
-    const img = m.image ? `<img class="mi-thumb" src="${m.image}">` : '';
+    const img = m.image ? `<img class="mi-thumb" src="${driveToDirectUrl(m.image)}">` : '';
     const variant = itemHasVariant(m);
     const ctrl = variant
       ? `<button class="btn btn-primary btn-sm" onclick="openItemOptions('${id}')">Chọn</button>`
@@ -1390,7 +1405,7 @@ function openItemOptions(id){
   document.getElementById('ioItemId').value = id;
   document.getElementById('ioName').textContent = m.name;
   const imgEl = document.getElementById('ioImage');
-  if (m.image) { imgEl.src = m.image; imgEl.style.display='block'; } else imgEl.style.display='none';
+  if (m.image) { imgEl.src = driveToDirectUrl(m.image); imgEl.style.display='block'; } else imgEl.style.display='none';
   document.getElementById('ioBasePrice').textContent = extras.sizes.length ? ('từ ' + money(Math.min(...extras.sizes.map(s=>Number(s.price)||0)))) : money(ioState.basePrice);
 
   renderIoSizeRows();
@@ -1801,7 +1816,7 @@ function renderQrCode(){
       catch(e){ console.error('Không chèn được logo vào QR:', e); img.src = qrUrl; }
     };
     logoImg.onerror = () => { img.src = qrUrl; };
-    logoImg.src = restaurantInfo.logo1;
+    logoImg.src = driveToDirectUrl(restaurantInfo.logo1);
   };
   qrImg.onerror = () => { img.src = qrUrl; };
   qrImg.src = qrUrl;
@@ -1887,7 +1902,7 @@ function renderMenuAdmin(){
     return `
     <div class="list-row">
       <div class="mi-row-main">
-        ${m.image?`<img class="mi-thumb" src="${m.image}">`:''}
+        ${m.image?`<img class="mi-thumb" src="${driveToDirectUrl(m.image)}">`:''}
         <div><b>${m.name}</b><br><span class="muted">${money(m.price)} • ${m.category||''} ${m.available===false||m.available==='FALSE'?'• Đang tắt bán':''}</span>
         ${tags.length?`<div class="mini-tags">${tags.join('')}</div>`:''}
         </div>
@@ -2001,7 +2016,7 @@ function openMenuItemModal(id){
   document.getElementById('miAvail').checked = !(m?.available===false || m?.available==='FALSE');
   document.getElementById('miImage').value = m?.image||'';
   const prev = document.getElementById('miImagePrev');
-  if (m?.image) { prev.src = m.image; prev.style.display='block'; } else prev.style.display='none';
+  if (m?.image) { prev.src = driveToDirectUrl(m.image); prev.style.display='block'; } else prev.style.display='none';
 
   const sizesCopy = e.sizes.length ? JSON.parse(JSON.stringify(e.sizes)) : [];
   const mSize = sizesCopy.find(s=>(s.name||'').trim().toUpperCase()==='M');
