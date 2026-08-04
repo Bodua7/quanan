@@ -421,8 +421,27 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
       <div class="card">
         <div class="card-title">📱 Mã QR cho khách gọi món</div>
         <p class="muted">In mã này và dán tại từng bàn. Khách quét vào sẽ tự chọn số bàn.</p>
+        <canvas id="qrCanvas" width="240" height="240" style="display:none"></canvas>
         <img id="qrCustomer" style="width:180px;height:180px;display:block;margin:10px auto">
         <p class="muted" id="qrLink" style="text-align:center;word-break:break-all"></p>
+
+        <label style="margin-top:14px">🎨 Trang trí mã QR</label>
+        <div class="row">
+          <div>
+            <label style="margin-top:0">Màu mã QR</label>
+            <input type="color" id="setQrColor" value="#312e81">
+          </div>
+          <div>
+            <label style="margin-top:0">Màu nền</label>
+            <input type="color" id="setQrBgColor" value="#ffffff">
+          </div>
+        </div>
+        <div class="toggle-row">
+          <input type="checkbox" id="setQrLogoOn">
+          <label for="setQrLogoOn">Chèn Logo 1 (ở trang chào) vào giữa mã QR</label>
+        </div>
+        <button class="btn btn-primary" style="margin-top:10px" onclick="saveQrStyle()">Lưu kiểu QR</button>
+        <p class="muted" style="margin-top:6px">Mẹo: chọn màu mã QR đậm, màu nền sáng để máy quét dễ nhận diện. Khi chèn logo, mã tự nâng mức sửa lỗi để vẫn quét được, nhưng nên quét thử trước khi in hàng loạt.</p>
       </div>
       <button class="btn btn-outline" id="btnAdminLogoutSettings" onclick="adminLogout()">🚪 Đăng xuất</button>
     </div>
@@ -955,6 +974,9 @@ function onDataUpdate(){
   });
   document.getElementById('setRestLat').value = restaurantInfo.lat || '';
   document.getElementById('setRestLng').value = restaurantInfo.lng || '';
+  document.getElementById('setQrColor').value = '#' + (restaurantInfo.qrColor || '312e81');
+  document.getElementById('setQrBgColor').value = '#' + (restaurantInfo.qrBgColor || 'ffffff');
+  document.getElementById('setQrLogoOn').checked = !!restaurantInfo.qrLogoOn;
   [1,2,3,4,5].forEach(i=>{
     document.getElementById('setPhoneLabel'+i).value = restaurantInfo['phoneLabel'+i] || '';
     document.getElementById('setPhone'+i).value = restaurantInfo['phone'+i] || '';
@@ -967,7 +989,7 @@ function onDataUpdate(){
   if (!document.getElementById('scr-menu').classList.contains('hidden')) renderMenu();
   if (!document.getElementById('scr-track').classList.contains('hidden')) renderTrackFromState();
   if (!document.getElementById('scr-admin').classList.contains('hidden')){
-    renderOrders(); renderMenuAdmin(); renderInventory(); renderStaffList();
+    renderOrders(); renderMenuAdmin(); renderInventory(); renderStaffList(); renderQrCode();
   }
   renderCheckinStaffSelect();
 }
@@ -1722,6 +1744,55 @@ function applyRoleVisibility(){
   }
 }
 
+function renderQrCode(){
+  const base = location.origin + location.pathname + '?r=' + encodeURIComponent(currentRid);
+  document.getElementById('qrLink').textContent = base;
+  const color = (restaurantInfo.qrColor || '312e81').replace('#','');
+  const bg = (restaurantInfo.qrBgColor || 'ffffff').replace('#','');
+  const useLogo = !!restaurantInfo.qrLogoOn && !!restaurantInfo.logo1;
+  const ecc = useLogo ? 'H' : 'M'; // mức sửa lỗi cao hơn khi có logo đè lên giữa
+  const qrUrl = 'https://api.qrserver.com/v1/create-qr-code/?size=240x240&ecc=' + ecc +
+    '&color=' + encodeURIComponent(color) + '&bgcolor=' + encodeURIComponent(bg) +
+    '&data=' + encodeURIComponent(base);
+  const img = document.getElementById('qrCustomer');
+  if (!useLogo){ img.src = qrUrl; return; }
+
+  const qrImg = new Image();
+  qrImg.crossOrigin = 'anonymous';
+  qrImg.onload = () => {
+    const canvas = document.getElementById('qrCanvas');
+    const size = 240;
+    const ctx = canvas.getContext('2d');
+    ctx.clearRect(0,0,size,size);
+    ctx.drawImage(qrImg, 0, 0, size, size);
+    const logoImg = new Image();
+    logoImg.crossOrigin = 'anonymous';
+    logoImg.onload = () => {
+      const logoSize = size * 0.22, pad = 6;
+      ctx.fillStyle = '#fff';
+      ctx.beginPath(); ctx.arc(size/2, size/2, logoSize/2 + pad, 0, Math.PI*2); ctx.fill();
+      ctx.save();
+      ctx.beginPath(); ctx.arc(size/2, size/2, logoSize/2, 0, Math.PI*2); ctx.clip();
+      ctx.drawImage(logoImg, (size-logoSize)/2, (size-logoSize)/2, logoSize, logoSize);
+      ctx.restore();
+      try { img.src = canvas.toDataURL('image/png'); }
+      catch(e){ console.error('Không chèn được logo vào QR:', e); img.src = qrUrl; }
+    };
+    logoImg.onerror = () => { img.src = qrUrl; };
+    logoImg.src = restaurantInfo.logo1;
+  };
+  qrImg.onerror = () => { img.src = qrUrl; };
+  qrImg.src = qrUrl;
+}
+async function saveQrStyle(){
+  const color = document.getElementById('setQrColor').value.replace('#','');
+  const bg = document.getElementById('setQrBgColor').value.replace('#','');
+  const logoOn = document.getElementById('setQrLogoOn').checked;
+  await apiPost({action:'saveSettings', qrColor: color, qrBgColor: bg, qrLogoOn: logoOn});
+  await fetchAll();
+  alert('Đã lưu kiểu mã QR!');
+}
+
 function showAdmin(){
   hideAllScreens();
   document.getElementById('scr-admin').classList.remove('hidden');
@@ -1731,9 +1802,7 @@ function showAdmin(){
   document.getElementById('checkinDate').value = todayStr();
   loadStocktake(); loadCheckinHistory();
 
-  const base = location.origin + location.pathname + '?r=' + encodeURIComponent(currentRid);
-  document.getElementById('qrLink').textContent = base;
-  document.getElementById('qrCustomer').src = 'https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=' + encodeURIComponent(base);
+  renderQrCode();
 }
 
 function switchAdminTab(el, tab){
