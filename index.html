@@ -814,6 +814,7 @@ async function apiPost(body){
       case 'masterLogin': return await sbMasterLogin(body);
       case 'changeMasterPin': return await sbChangeMasterPin(body);
       case 'saveRestaurant': return await sbSaveRestaurant(body);
+      case 'createTempAdminPin': return await sbCreateTempAdminPin(body);
       case 'deleteRestaurant': { const { error } = await sb.from('restaurants').delete().eq('id', body.id); if(error) throw error; return {ok:true}; }
       default: return { ok:false, error:'unknown action' };
     }
@@ -942,6 +943,14 @@ async function sbSaveRestaurant(body){
     if (error) throw error;
   }
   return { ok:true, id:rid };
+}
+
+async function sbCreateTempAdminPin(body){
+  const { data, error } = await sb.rpc('create_temp_admin_pin', { p_rid: body.id });
+  if (error) return { ok:false, error:String(error.message||error) };
+  const row = Array.isArray(data) ? data[0] : data;
+  if (!row) return { ok:false, error:'Không tạo được mã tạm' };
+  return { ok:true, tempPin: row.temp_pin, expiresAt: Number(row.expires_at) };
 }
 
 let polling = false;
@@ -1204,6 +1213,7 @@ function renderMasterList(){
         <button class="btn btn-outline btn-sm" onclick="openRestaurantModal('${r.id}')">✏️ Sửa</button>
         <button class="btn btn-blue btn-sm" onclick="enterRestaurantAsMaster('${r.id}')">🔑 Vào quản lý</button>
       </div>
+      <button class="btn btn-outline btn-sm" style="margin-top:6px; color:#d97706; border-color:#fbbf24" onclick="createTempAdminPin('${r.id}','${(r.name||'').replace(/'/g,"\\'")}')">🆘 Tạo mã tạm cho chủ quán quên PIN</button>
     </div>`;
   }).join('');
 }
@@ -1222,6 +1232,15 @@ async function changeMasterPin(){
   document.getElementById('mpNew').value='';
   document.getElementById('mpNew2').value='';
   alert('Đã đổi mã chủ chuỗi thành công!');
+}
+async function createTempAdminPin(id, name){
+  if (!confirm(`Tạo mã tạm cho "${name||'quán này'}"?\nMã có hiệu lực 30 phút hoặc dùng 1 lần là hết hạn, không ảnh hưởng gì tới PIN thật của chủ quán.`)) return;
+  let res;
+  try { res = await apiPost({action:'createTempAdminPin', id}); }
+  catch(err){ return alert('Lỗi kết nối: ' + (err && err.message ? err.message : err)); }
+  if (!res || !res.ok) return alert('Không tạo được mã tạm: ' + (res && res.error ? res.error : 'lỗi không xác định'));
+  const expireTxt = new Date(res.expiresAt).toLocaleTimeString('vi-VN');
+  alert(`🆘 Mã tạm cho "${name||'quán'}": ${res.tempPin}\n\nĐọc mã này cho chủ quán, họ vào màn "Đăng nhập quản lý" nhập mã này như PIN chủ quán bình thường.\nMã hết hạn lúc ${expireTxt} (hoặc hết hạn ngay sau khi dùng 1 lần).`);
 }
 function enterRestaurantAsMaster(id){
   currentRid = id;
@@ -2344,8 +2363,19 @@ if (location.search.indexOf('resetcache=1') !== -1) {
   })();
 } else if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('./sw.js').catch(err => console.error('SW lỗi:', err));
+    navigator.serviceWorker.register('./sw.js')
+      .then(reg => {
+        if (location.search.indexOf('debug=sw') !== -1) {
+          alert('✅ Đã đăng ký sw.js thành công.\nScope: ' + reg.scope + '\nActive: ' + (reg.active ? reg.active.scriptURL : '(chưa active)'));
+        }
+      })
+      .catch(err => {
+        console.error('SW lỗi:', err);
+        alert('⚠️ Không đăng ký được sw.js (Service Worker).\nLỗi: ' + err.message + '\n\nCó thể trình duyệt đang chặn Service Worker (vd: Herond Shield / chế độ riêng tư). Thử tắt tính năng chặn cho trang này rồi tải lại.');
+      });
   });
+} else if (location.search.indexOf('debug=sw') !== -1) {
+  alert('⚠️ Trình duyệt này không hỗ trợ Service Worker (navigator.serviceWorker không tồn tại), nên app sẽ không cache để dùng offline được, nhưng vẫn dùng bình thường khi có mạng.');
 }
 
 function initContactRows(){

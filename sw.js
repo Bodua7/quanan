@@ -1,6 +1,6 @@
 /* Service worker cho app Quán Ăn.
    Đổi CACHE_NAME (vd v2, v3...) mỗi khi muốn ép người dùng cũ tải bản mới. */
-const CACHE_NAME = 'quanan-cache-v3';
+const CACHE_NAME = 'quanan-cache-v4';
 const CORE_ASSETS = [
   './',
   './index.html',
