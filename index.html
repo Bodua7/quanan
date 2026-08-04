@@ -501,7 +501,6 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
 
       <div class="toggle-row"><input type="checkbox" id="miHasTopping" onchange="toggleMiBlock('miToppingBlock', this.checked)"><label>Có topping thêm</label></div>
       <div class="subcard hidden" id="miToppingBlock">
-        <div class="chip-label">Chọn nhanh topping có sẵn (bấm tên để thêm vào món, ✏️ sửa giá, ✕ xóa khỏi danh mục, ＋ lưu topping từ danh mục "TOPPING" vào đây để sửa giá riêng)</div>
         <div class="chip-scroll" id="miToppingChips"></div>
         <div class="row" style="margin:8px 0">
           <input id="inpCatalogToppingName" placeholder="Tên topping mới (VD: Trân châu)" style="flex:1">
@@ -2113,7 +2112,7 @@ function renderMiToppingChips(){
     return `<div class="chip" style="display:flex;align-items:center;gap:6px">
        <span onclick="pickMiToppingChip(${i})" style="cursor:pointer">${escHtml(t.name)} <span style="opacity:.75">+${money(t.price)}</span></span>
        ${fromCatalog
-         ? `<span onclick="editToppingCatalogPrice(${i})" style="opacity:.6">✏️</span><span onclick="deleteToppingFromCatalog(${i})" style="opacity:.6">✕</span>`
+         ? ``
          : `<span onclick="saveItemToppingToCatalog(${i})" title="Lưu vào danh mục topping của quán để sửa giá riêng" style="opacity:.6">＋</span>`}
      </div>`;
   }).join('') : '<span class="muted" style="font-size:12px">Chưa có topping nào - thêm ở ô bên dưới, hoặc tạo món trong danh mục "TOPPING" ở Thực đơn</span>';
