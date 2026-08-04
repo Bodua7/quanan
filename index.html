@@ -882,11 +882,23 @@ async function apiPost(body){
 
 async function sbAddOrder(body){
   const now = Date.now();
+  const clientId = body.clientId || null;
   const { data, error } = await sb.from('orders').insert({
     restaurantId: currentRid, table: body.table, items: JSON.stringify(body.items), total: body.total,
-    note: body.note||'', status:'pending', createdAt: now, updatedAt: now
+    note: body.note||'', status:'pending', createdAt: now, updatedAt: now, clientId
   }).select().single();
-  if (error) throw error;
+  if (error){
+    // Mạng có thể đã rớt SAU KHI đơn được ghi vào server nhưng TRƯỚC KHI
+    // phản hồi kịp về máy khách (rất hay gặp với wifi/4G chập chờn ở quán).
+    // Trước khi báo lỗi "mất kết nối", kiểm tra lại xem đơn với clientId này
+    // đã thực sự nằm trong DB chưa - tránh báo lỗi oan và tránh tạo đơn trùng
+    // nếu khách bấm gửi lại.
+    if (clientId){
+      const { data: existing } = await sb.from('orders').select('*').eq('clientId', clientId).maybeSingle();
+      if (existing) return { ok:true, id:existing.id };
+    }
+    throw error;
+  }
   return { ok:true, id:data.id };
 }
 
@@ -1677,6 +1689,12 @@ function showCart(){
   document.getElementById('cartTotal').textContent = money(cartTotal());
 }
 
+// Giữ nguyên 1 clientId cho tới khi đơn THỰC SỰ gửi thành công. Nếu khách
+// bấm "gửi" nhiều lần liên tiếp (do lần trước báo lỗi mạng), mọi lần gửi
+// đều dùng chung clientId này -> sbAddOrder sẽ nhận ra đơn đã tồn tại thay
+// vì tạo đơn trùng, và tránh báo lỗi oan khi đơn đã vào tới quán rồi.
+let pendingOrderClientId = null;
+
 async function submitOrder(){
   if (cartCount()===0) return alert('Giỏ hàng trống!');
   const btn = document.getElementById('btnSubmitOrder');
@@ -1684,21 +1702,26 @@ async function submitOrder(){
   const simpleItems = Object.entries(cart).map(([id,q])=>({id, name:menuItems[id].name, price:menuItems[id].price, qty:q}));
   const variantItems = cartVariants.map(v=>({id:v.id, name:variantLabel(v), price:v.unitPrice, qty:v.qty, size:v.size, spicy:v.spicy, toppings:v.toppings, sugar:v.sugar, ice:v.ice}));
   const items = simpleItems.concat(variantItems);
+  if (!pendingOrderClientId){
+    pendingOrderClientId = (crypto.randomUUID ? crypto.randomUUID() : 'c-' + Date.now() + '-' + Math.random().toString(36).slice(2));
+  }
   try{
     const res = await apiPost({
       action:'addOrder', table: currentTable, items, total: cartTotal(),
-      note: document.getElementById('cartNote').value.trim()
+      note: document.getElementById('cartNote').value.trim(),
+      clientId: pendingOrderClientId
     });
     if (res.ok){
       currentOrderId = res.id;
       localStorage.setItem('qa_orderId', currentOrderId);
+      pendingOrderClientId = null;
       cart = {};
       cartVariants = [];
       document.getElementById('cartNote').value='';
       await fetchAll();
       showTrack();
     } else alert('Lỗi khi gửi đơn: ' + (res.error||''));
-  } catch(err){ alert('Không kết nối được tới quán, thử lại nhé!'); }
+  } catch(err){ alert('Không kết nối được tới quán, thử lại nhé! Nếu vẫn thấy lỗi, hãy tải lại trang trước khi gửi lại - đơn có thể đã tới quán rồi.'); }
   finally{ btn.disabled = false; btn.textContent = '✅ Xác nhận gửi tới quán'; }
 }
 
