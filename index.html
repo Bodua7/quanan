@@ -87,6 +87,9 @@ label { font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase
 
 .splash { min-height:100vh; background:linear-gradient(180deg,#fff7ed 0%,#fde7d4 55%,#fef3ec 100%); display:flex; flex-direction:column; align-items:center; padding:28px 20px 40px; position:relative; }
 .splash-lock { position:absolute; top:16px; right:16px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,.75); backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; font-size:17px; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.1); }
+.restlist-notch-wrap { display:flex; justify-content:center; }
+.restlist-notch { width:60px; height:36px; background:linear-gradient(135deg,#1e1b4b,#312e81); border-radius:0 0 20px 20px; display:flex; align-items:center; justify-content:center; box-shadow:0 4px 10px rgba(0,0,0,.18); cursor:pointer; }
+.restlist-notch span { font-size:16px; }
 .splash-master { position:absolute; top:16px; right:64px; width:38px; height:38px; border-radius:50%; background:rgba(255,255,255,.75); backdrop-filter:blur(2px); display:flex; align-items:center; justify-content:center; font-size:16px; cursor:pointer; box-shadow:0 2px 8px rgba(0,0,0,.1); }
 .splash-logos { display:flex; flex-wrap:wrap; justify-content:center; gap:16px; margin:44px 0 22px; }
 .splash-logo { width:118px; height:118px; border-radius:50%; overflow:hidden; border:3px solid #fff; box-shadow:0 6px 16px rgba(0,0,0,.14); background:#fff; display:flex; align-items:center; justify-content:center; }
@@ -156,13 +159,13 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
     </div>
   </div>
 
-  <!-- CHỌN QUÁN (màn trung tâm khi mở app chưa gắn với 1 quán cụ thể) -->
+  <!-- TRANG DÙNG CHUNG (chưa gắn với 1 quán cụ thể): vùng khuyết chứa khóa 🔒
+       để chủ chuỗi đăng nhập quản lý chuỗi, bên dưới là danh sách quán chỉ dẫn. -->
   <div id="scr-restlist" class="pad hidden">
-    <div class="card" style="position:relative">
-      <div class="splash-lock" style="position:absolute; top:10px; right:10px; width:32px; height:32px; font-size:14px;" onclick="showMasterLogin()" title="Chủ chuỗi">🔒</div>
-      <div class="card-title" style="padding-right:38px">🏬 Chọn quán</div>
-      <p class="muted">Đến quán và quét mã QR dán tại bàn để gọi món.</p>
+    <div class="restlist-notch-wrap">
+      <div class="restlist-notch" onclick="showMasterLogin()" title="Chủ chuỗi"><span>🔒</span></div>
     </div>
+    <p class="muted" style="margin-top:14px">Đến quán và quét mã QR dán tại bàn để gọi món:</p>
     <div id="restListBox"></div>
   </div>
 
@@ -1112,8 +1115,8 @@ function goAdminLogin(){ hideAllScreens(); document.getElementById('scr-admin-lo
 
 /* ================= CHỌN QUÁN (trung tâm nhiều quán) ================= */
 async function showRestaurantList(){
-  // Trang "dùng chung" (chưa quét QR quán nào) hiện danh sách tên + địa chỉ các
-  // quán trong chuỗi để khách biết đường tới - ĐÂY CHỈ LÀ BẢNG CHỈ DẪN, không
+  // Trang "dùng chung" (chưa quét QR quán nào): hiện vùng khuyết chứa khóa 🔒
+  // để chủ chuỗi đăng nhập, bên dưới là danh sách quán CHỈ ĐỂ CHỈ DẪN - không
   // bấm vào để gọi món hay vào quản lý được. Khách phải đến tận quán, quét đúng
   // mã QR dán tại quán đó thì mới gọi món được; chủ quán 1 vẫn không thể tự
   // nhảy sang làm chủ quán 2 nếu không quét QR + nhập đúng PIN của quán 2.
@@ -1126,7 +1129,7 @@ async function showRestaurantList(){
   catch(err){ document.getElementById('restListBox').innerHTML = '<p class="muted">Không kết nối được tới máy chủ.</p>'; return; }
   const entries = Object.values(toMap(data.restaurants||[]));
   if (entries.length === 0) {
-    document.getElementById('restListBox').innerHTML = '<p class="muted">Chưa có quán nào. Chủ chuỗi bấm 🏢 để đăng nhập và tạo quán đầu tiên.</p>';
+    document.getElementById('restListBox').innerHTML = '<p class="muted">Chưa có quán nào. Chủ chuỗi bấm 🔒 để đăng nhập và tạo quán đầu tiên.</p>';
     return;
   }
   document.getElementById('restListBox').innerHTML =
