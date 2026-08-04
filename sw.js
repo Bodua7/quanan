@@ -1,6 +1,6 @@
 /* Service worker cho app Quán Ăn.
    Đổi CACHE_NAME (vd v2, v3...) mỗi khi muốn ép người dùng cũ tải bản mới. */
-const CACHE_NAME = 'quanan-cache-v1';
+const CACHE_NAME = 'quanan-cache-v2';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -47,7 +47,7 @@ self.addEventListener('fetch', (event) => {
   // khi mất mạng - tránh tình trạng bị kẹt bản cũ khi đã sửa code.
   if (req.mode === 'navigate' || url.pathname.endsWith('.html')) {
     event.respondWith(
-      fetch(req)
+      fetch(req, { cache: 'no-store' })
         .then((res) => {
           const copy = res.clone();
           caches.open(CACHE_NAME).then((cache) => cache.put(req, copy));
