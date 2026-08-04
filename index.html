@@ -540,12 +540,12 @@ Mì cay gà - 40k"></textarea>
       <input type="hidden" id="ioItemId">
 
       <div class="opt-block" id="ioSizeBlock">
-        <div class="opt-title">Bấm + để thêm 1 ly</div>
+        <div class="opt-title">Bấm + để thêm 1 món</div>
         <div id="ioSizeList"></div>
       </div>
 
       <div class="opt-block hidden" id="ioBuilderPanel" style="border-top:1px dashed #cbd5e1;padding-top:14px;margin-top:14px">
-        <div class="opt-title" id="ioBuilderTitle">Tuỳ chọn cho ly này</div>
+        <div class="opt-title" id="ioBuilderTitle">Tuỳ chọn cho món này</div>
 
         <div class="opt-block hidden" id="ioSpicyBlock">
           <div class="opt-title">Chọn độ cay</div>
@@ -568,7 +568,7 @@ Mì cay gà - 40k"></textarea>
         </div>
 
         <div class="opt-block">
-          <div class="opt-title">Số lượng ly giống hệt nhau</div>
+          <div class="opt-title">Số lượng món giống hệt nhau</div>
           <div class="qty-ctrl">
             <button class="qty-btn" onclick="changeIoQty(-1)">−</button>
             <span class="qty-num" id="ioQty">1</span>
@@ -576,7 +576,7 @@ Mì cay gà - 40k"></textarea>
           </div>
         </div>
 
-        <button class="btn btn-primary" style="margin-top:14px" id="btnAddVariant" onclick="confirmAddVariant()">✓ OK, thêm ly này · <span id="ioTotalPrice"></span></button>
+        <button class="btn btn-primary" style="margin-top:14px" id="btnAddVariant" onclick="confirmAddVariant()">✓ OK, thêm món này · <span id="ioTotalPrice"></span></button>
         <button class="btn btn-outline" style="margin-top:8px" onclick="cancelIoBuild()">Huỷ</button>
       </div>
 
@@ -1470,7 +1470,7 @@ function startIoBuild(i){
       `<div class="level-opt ${k===1?'active':''}" data-i="${k}" onclick="selectIoIce(${k})">${label}</div>`).join('');
   } else { sugarBlock.classList.add('hidden'); iceBlock.classList.add('hidden'); }
 
-  document.getElementById('ioBuilderTitle').textContent = 'Tuỳ chọn cho ly ' + (ioState.selSize ? ioState.selSize.name : ioState.name) + ' này';
+  document.getElementById('ioBuilderTitle').textContent = 'Tuỳ chọn cho món ' + (ioState.selSize ? ioState.selSize.name : ioState.name) + ' này';
   document.getElementById('ioQty').textContent = '1';
   document.getElementById('ioBuilderPanel').classList.remove('hidden');
   updateIoTotal();
@@ -1499,7 +1499,7 @@ function renderIoCartSummary(){
     if (v.sugar) parts.push(v.sugar);
     if (v.ice) parts.push(v.ice);
     if (v.toppings && v.toppings.length) parts.push('+' + v.toppings.join(', +'));
-    return `${v.qty} ly${parts.length ? ' (' + parts.join(' · ') + ')' : ''} — ${money(v.unitPrice*v.qty)}`;
+    return `${v.qty} món${parts.length ? ' (' + parts.join(' · ') + ')' : ''} — ${money(v.unitPrice*v.qty)}`;
   }).join('<br>');
 }
 function selectIoSpicy(level){
@@ -1532,7 +1532,7 @@ function ioUnitPrice(){
 }
 function updateIoTotal(){
   const btn = document.getElementById('btnAddVariant');
-  if (btn && !document.getElementById('ioTotalPrice')) btn.innerHTML = '✓ OK, thêm ly này · <span id="ioTotalPrice"></span>';
+  if (btn && !document.getElementById('ioTotalPrice')) btn.innerHTML = '✓ OK, thêm món này · <span id="ioTotalPrice"></span>';
   document.getElementById('ioTotalPrice').textContent = money(ioUnitPrice() * ioState.qty);
 }
 let ioAddFeedbackTimer = null;
