@@ -158,10 +158,10 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
 
   <!-- CHỌN QUÁN (màn trung tâm khi mở app chưa gắn với 1 quán cụ thể) -->
   <div id="scr-restlist" class="pad hidden">
-    <div class="splash-lock" onclick="showMasterLogin()" title="Chủ chuỗi">🔒</div>
-    <div class="card">
-      <div class="card-title">🏬 Chọn quán</div>
-      <p class="muted">Chọn quán bạn muốn xem/gọi món hoặc quản lý.</p>
+    <div class="card" style="position:relative">
+      <div class="splash-lock" style="position:absolute; top:10px; right:10px; width:32px; height:32px; font-size:14px;" onclick="showMasterLogin()" title="Chủ chuỗi">🔒</div>
+      <div class="card-title" style="padding-right:38px">🏬 Chọn quán</div>
+      <p class="muted">Đến quán và quét mã QR dán tại bàn để gọi món.</p>
     </div>
     <div id="restListBox"></div>
   </div>
@@ -177,7 +177,6 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
           <button class="btn btn-primary" style="margin-top:12px" onclick="masterLogin()">Đăng nhập</button>
           <button class="btn btn-outline" style="margin-top:8px" onclick="cancelMasterLogin()">← Quay lại</button>
         </div>
-        <p class="muted">Mã mặc định: 9999 (đổi trong Cài đặt chuỗi sau khi đăng nhập)</p>
       </div>
     </div>
   </div>
@@ -1109,7 +1108,6 @@ async function showRestaurantList(){
     return;
   }
   document.getElementById('restListBox').innerHTML =
-    '<p class="muted" style="margin-bottom:10px">Đến quán và quét mã QR dán tại bàn để gọi món:</p>' +
     entries.map(r=>`
     <div class="card">
       <div class="card-title">🍜 ${r.name||'Quán'}</div>
