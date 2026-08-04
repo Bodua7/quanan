@@ -122,8 +122,11 @@ label { font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase
 .level-opt.active { background:#312e81; border-color:#312e81; color:#fff; }
 .opt-block { margin-top:14px; }
 .opt-title { font-size:12px; font-weight:700; color:#64748b; text-transform:uppercase; margin-bottom:6px; }
-.size-opt { display:flex; align-items:center; gap:8px; padding:8px 10px; border:1.5px solid #cbd5e1; border-radius:8px; margin-bottom:6px; cursor:pointer; }
-.size-opt.active { border-color:#d97706; background:#fff7ed; }
+.size-opt { display:flex; align-items:center; gap:8px; padding:8px 10px; border:1.5px solid #cbd5e1; border-radius:8px; margin-bottom:6px; }
+.size-opt.building { border-color:#d97706; background:#fff7ed; }
+.size-opt.locked { opacity:.4; }
+.size-add-btn { width:32px; height:32px; border-radius:50%; border:none; background:#d97706; color:#fff; font-size:18px; font-weight:700; cursor:pointer; display:flex; align-items:center; justify-content:center; flex:none; }
+.size-add-btn:disabled { background:#cbd5e1; cursor:not-allowed; }
 .topping-opt { display:flex; align-items:center; gap:8px; padding:6px 0; }
 .topping-opt input { width:auto; }
 .variant-desc { font-size:11px; color:#64748b; margin-top:2px; }
@@ -172,7 +175,7 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
           <label>Mã chủ chuỗi (Master PIN)</label>
           <input type="password" id="inpMasterPin" placeholder="Nhập mã chủ chuỗi">
           <button class="btn btn-primary" style="margin-top:12px" onclick="masterLogin()">Đăng nhập</button>
-          <button class="btn btn-outline" style="margin-top:8px" onclick="showRestaurantList()">← Quay lại chọn quán</button>
+          <button class="btn btn-outline" style="margin-top:8px" onclick="cancelMasterLogin()">← Quay lại</button>
         </div>
         <p class="muted">Mã mặc định: 9999 (đổi trong Cài đặt chuỗi sau khi đăng nhập)</p>
       </div>
@@ -296,7 +299,6 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
     <div class="pad" style="padding-bottom:0;display:flex;justify-content:space-between;align-items:center;gap:8px">
       <span class="badge" id="roleLabel" style="background:#312e81"></span>
       <button class="btn btn-outline btn-sm hidden" id="btnBackToMaster" onclick="backToMasterDashboard()">🏬 Về quản lý chuỗi</button>
-      <button class="btn btn-outline btn-sm" id="btnSwitchRest" onclick="goRestaurantList()">🔁 Đổi quán</button>
     </div>
     <div class="tabs">
       <div class="tab active" data-t="orders" onclick="switchAdminTab(this,'orders')">📋 Đơn hàng</div>
@@ -455,13 +457,14 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
         <button type="button" class="tiny-btn" onclick="addSizeRow()">+ Thêm size khác</button>
       </div>
 
-      <div class="toggle-row"><input type="checkbox" id="miHasSpicy" onchange="toggleMiBlock('miSpicyBlock', this.checked)"><label>Có chọn độ cay</label></div>
+      <div class="toggle-row" id="miSpicyToggleRow"><input type="checkbox" id="miHasSpicy" onchange="toggleMiBlock('miSpicyBlock', this.checked)"><label>Có chọn độ cay</label></div>
       <div class="subcard hidden" id="miSpicyBlock">
         <p class="muted" style="margin:0">Mức cay tự động từ 0 đến 7, khách chọn khi đặt món - không cần chỉnh gì thêm.</p>
         <input type="hidden" id="miSpicyMax" value="7">
       </div>
 
-      <div class="toggle-row"><input type="checkbox" id="miHasSugarIce"><label>Có chọn mức đường/đá (miễn phí, dành cho món nước)</label></div>
+      <div class="toggle-row"><input type="checkbox" id="miHasSugarIce" onchange="toggleMiSugarIce(this.checked)"><label>Có chọn mức đường/đá (miễn phí, dành cho món nước)</label></div>
+      <p class="muted hidden" id="miSugarIceNote" style="margin:2px 0 0">Món nước không cần chọn độ cay nên mục đó đã tự ẩn.</p>
 
       <div class="toggle-row"><input type="checkbox" id="miHasTopping" onchange="toggleMiBlock('miToppingBlock', this.checked)"><label>Có topping thêm</label></div>
       <div class="subcard hidden" id="miToppingBlock">
@@ -515,41 +518,53 @@ Mì cay gà - 40k"></textarea>
       </div>
       <input type="hidden" id="ioItemId">
 
-      <div class="opt-block hidden" id="ioSizeBlock">
-        <div class="opt-title">Chọn size</div>
+      <div class="opt-block" id="ioSizeBlock">
+        <div class="opt-title">Bấm + để thêm 1 ly</div>
         <div id="ioSizeList"></div>
       </div>
 
-      <div class="opt-block hidden" id="ioSpicyBlock">
-        <div class="opt-title">Chọn độ cay</div>
-        <div class="spicy-picker" id="ioSpicyList"></div>
-      </div>
+      <div class="opt-block hidden" id="ioBuilderPanel" style="border-top:1px dashed #cbd5e1;padding-top:14px;margin-top:14px">
+        <div class="opt-title" id="ioBuilderTitle">Tuỳ chọn cho ly này</div>
 
-      <div class="opt-block hidden" id="ioToppingBlock">
-        <div class="opt-title">Topping thêm</div>
-        <div id="ioToppingList"></div>
-      </div>
-
-      <div class="opt-block hidden" id="ioSugarBlock">
-        <div class="opt-title">Mức đường</div>
-        <div class="level-picker" id="ioSugarList"></div>
-      </div>
-
-      <div class="opt-block hidden" id="ioIceBlock">
-        <div class="opt-title">Mức đá</div>
-        <div class="level-picker" id="ioIceList"></div>
-      </div>
-
-      <div class="opt-block">
-        <div class="opt-title">Số lượng</div>
-        <div class="qty-ctrl">
-          <button class="qty-btn" onclick="changeIoQty(-1)">−</button>
-          <span class="qty-num" id="ioQty">1</span>
-          <button class="qty-btn" onclick="changeIoQty(1)">+</button>
+        <div class="opt-block hidden" id="ioSpicyBlock">
+          <div class="opt-title">Chọn độ cay</div>
+          <div class="spicy-picker" id="ioSpicyList"></div>
         </div>
+
+        <div class="opt-block hidden" id="ioToppingBlock">
+          <div class="opt-title">Topping thêm</div>
+          <div id="ioToppingList"></div>
+        </div>
+
+        <div class="opt-block hidden" id="ioSugarBlock">
+          <div class="opt-title">Mức đường</div>
+          <div class="level-picker" id="ioSugarList"></div>
+        </div>
+
+        <div class="opt-block hidden" id="ioIceBlock">
+          <div class="opt-title">Mức đá</div>
+          <div class="level-picker" id="ioIceList"></div>
+        </div>
+
+        <div class="opt-block">
+          <div class="opt-title">Số lượng ly giống hệt nhau</div>
+          <div class="qty-ctrl">
+            <button class="qty-btn" onclick="changeIoQty(-1)">−</button>
+            <span class="qty-num" id="ioQty">1</span>
+            <button class="qty-btn" onclick="changeIoQty(1)">+</button>
+          </div>
+        </div>
+
+        <button class="btn btn-primary" style="margin-top:14px" id="btnAddVariant" onclick="confirmAddVariant()">✓ OK, thêm ly này · <span id="ioTotalPrice"></span></button>
+        <button class="btn btn-outline" style="margin-top:8px" onclick="cancelIoBuild()">Huỷ</button>
       </div>
 
-      <button class="btn btn-primary" style="margin-top:14px" onclick="confirmAddVariant()">Thêm vào giỏ · <span id="ioTotalPrice"></span></button>
+      <div class="opt-block hidden" id="ioCartSummaryBlock">
+        <div class="opt-title">Đã thêm cho món này</div>
+        <div id="ioCartSummaryList" class="muted" style="font-size:13px;line-height:1.7"></div>
+      </div>
+
+      <button class="btn btn-outline" style="margin-top:14px" onclick="closeModal('modalItemOptions')">Xong, đóng lại</button>
     </div>
   </div>
 
@@ -1076,6 +1091,11 @@ function goAdminLogin(){ hideAllScreens(); document.getElementById('scr-admin-lo
 
 /* ================= CHỌN QUÁN (trung tâm nhiều quán) ================= */
 async function showRestaurantList(){
+  // Trang "dùng chung" (chưa quét QR quán nào) hiện danh sách tên + địa chỉ các
+  // quán trong chuỗi để khách biết đường tới - ĐÂY CHỈ LÀ BẢNG CHỈ DẪN, không
+  // bấm vào để gọi món hay vào quản lý được. Khách phải đến tận quán, quét đúng
+  // mã QR dán tại quán đó thì mới gọi món được; chủ quán 1 vẫn không thể tự
+  // nhảy sang làm chủ quán 2 nếu không quét QR + nhập đúng PIN của quán 2.
   hideAllScreens();
   document.getElementById('hdBar').classList.add('hidden');
   document.getElementById('scr-restlist').classList.remove('hidden');
@@ -1083,24 +1103,18 @@ async function showRestaurantList(){
   let data;
   try { data = await apiGet({action:'listRestaurants'}); }
   catch(err){ document.getElementById('restListBox').innerHTML = '<p class="muted">Không kết nối được tới máy chủ.</p>'; return; }
-  restaurantsPublic = toMap(data.restaurants||[]);
-  const entries = Object.values(restaurantsPublic);
-  if (entries.length === 1) { selectRestaurant(entries[0].id); return; }
+  const entries = Object.values(toMap(data.restaurants||[]));
   if (entries.length === 0) {
-    document.getElementById('restListBox').innerHTML = '<p class="muted">Chưa có quán nào. Chủ chuỗi bấm 🔒 để đăng nhập và tạo quán đầu tiên.</p>';
+    document.getElementById('restListBox').innerHTML = '<p class="muted">Chưa có quán nào. Chủ chuỗi bấm 🏢 để đăng nhập và tạo quán đầu tiên.</p>';
     return;
   }
-  document.getElementById('restListBox').innerHTML = entries.map(r=>`
-    <div class="card" style="cursor:pointer" onclick="selectRestaurant('${r.id}')">
+  document.getElementById('restListBox').innerHTML =
+    '<p class="muted" style="margin-bottom:10px">Đến quán và quét mã QR dán tại bàn để gọi món:</p>' +
+    entries.map(r=>`
+    <div class="card">
       <div class="card-title">🍜 ${r.name||'Quán'}</div>
       <p class="muted">${r.address||''}</p>
     </div>`).join('');
-}
-function selectRestaurant(id){
-  if (id !== currentRid) clearAdminSession(); // đổi sang quán khác -> luôn bắt đăng nhập lại, không dùng ké phiên admin của quán cũ
-  currentRid = id;
-  localStorage.setItem('qa_rid', id);
-  boot();
 }
 function goRestaurantList(){
   currentRid = '';
@@ -1117,6 +1131,10 @@ function showMasterLogin(){
   document.getElementById('hdBar').classList.add('hidden');
   if (isMaster) { showMasterDashboard(); return; }
   document.getElementById('scr-master-login').classList.remove('hidden');
+}
+function cancelMasterLogin(){
+  document.getElementById('inpMasterPin').value = '';
+  if (currentRid) { goCustomer(); } else { showRestaurantList(); }
 }
 async function masterLogin(){
   const pin = document.getElementById('inpMasterPin').value.trim();
@@ -1318,58 +1336,114 @@ function cartCount(){
 
 /* ---- CUSTOMER: CHỌN SIZE / ĐỘ CAY / TOPPING ---- */
 let ioState = null;
+let ioBuilding = false; // đang mở panel tuỳ chọn cho 1 ly (size đã khoá, chờ OK/Huỷ)
 function openItemOptions(id){
+  clearTimeout(ioAddFeedbackTimer);
   const m = menuItems[id]; if (!m) return;
   const extras = parseItemExtras(m);
   ioState = { id, name:m.name, image:m.image||'', basePrice:Number(m.price)||0, sizes:extras.sizes, spicyMax:extras.spicyMax, toppings:extras.toppings, sugarIce:extras.sugarIce,
-    selSize: extras.sizes[0] || null, selSpicy: 0, selToppings: [], selSugar: 1, selIce: 1, qty: 1 };
+    selSize: null, selSpicy: 0, selToppings: [], selSugar: 1, selIce: 1, qty: 1 };
+  ioBuilding = false;
 
   document.getElementById('ioItemId').value = id;
   document.getElementById('ioName').textContent = m.name;
   const imgEl = document.getElementById('ioImage');
   if (m.image) { imgEl.src = m.image; imgEl.style.display='block'; } else imgEl.style.display='none';
-  document.getElementById('ioQty').textContent = '1';
+  document.getElementById('ioBasePrice').textContent = extras.sizes.length ? ('từ ' + money(Math.min(...extras.sizes.map(s=>Number(s.price)||0)))) : money(ioState.basePrice);
 
+  renderIoSizeRows();
+  document.getElementById('ioBuilderPanel').classList.add('hidden');
+  renderIoCartSummary();
+  document.getElementById('modalItemOptions').classList.add('active');
+}
+function renderIoSizeRows(){
   const sizeBlock = document.getElementById('ioSizeBlock');
-  if (extras.sizes.length){
-    sizeBlock.classList.remove('hidden');
-    document.getElementById('ioSizeList').innerHTML = extras.sizes.map((s,i)=>
-      `<div class="size-opt ${i===0?'active':''}" data-i="${i}" onclick="selectIoSize(${i})"><b>${s.name}</b><span class="muted" style="margin-left:auto">${money(s.price)}</span></div>`).join('');
-  } else sizeBlock.classList.add('hidden');
+  sizeBlock.classList.remove('hidden');
+  if (ioState.sizes.length){
+    document.getElementById('ioSizeList').innerHTML = ioState.sizes.map((s,i)=>
+      `<div class="size-opt" id="ioSizeRow${i}"><b>${s.name}</b><span class="muted" style="margin-left:auto;margin-right:10px">${money(s.price)}</span>
+       <button class="size-add-btn" id="ioSizeBtn${i}" onclick="startIoBuild(${i})">+</button></div>`).join('');
+  } else {
+    // Món không có size (chỉ có topping/độ cay/đường đá riêng) -> 1 dòng "+" duy nhất
+    document.getElementById('ioSizeList').innerHTML =
+      `<div class="size-opt" id="ioSizeRow0"><b>${ioState.name}</b><span class="muted" style="margin-left:auto;margin-right:10px">${money(ioState.basePrice)}</span>
+       <button class="size-add-btn" id="ioSizeBtn0" onclick="startIoBuild(-1)">+</button></div>`;
+  }
+}
+function startIoBuild(i){
+  if (ioBuilding) return; // đang khoá vì đã có ly khác đang chọn dở
+  ioBuilding = true;
+  ioState.selSize = i>=0 ? ioState.sizes[i] : null;
+  ioState.selSpicy = 0; ioState.selToppings = []; ioState.selSugar = 1; ioState.selIce = 1; ioState.qty = 1;
+
+  // Khoá tất cả nút + (kể cả nút vừa bấm), làm nổi bật size đang chọn
+  const rowCount = ioState.sizes.length || 1;
+  const buildRowIdx = ioState.sizes.length ? i : 0; // món không có size -> chỉ có 1 dòng duy nhất (index 0)
+  for (let r=0;r<rowCount;r++){
+    const row = document.getElementById('ioSizeRow'+r); const btn = document.getElementById('ioSizeBtn'+r);
+    if (!row) continue;
+    btn.disabled = true;
+    row.classList.toggle('building', r===buildRowIdx);
+    row.classList.toggle('locked', r!==buildRowIdx);
+  }
 
   const spicyBlock = document.getElementById('ioSpicyBlock');
-  if (extras.spicyMax > 0){
+  if (ioState.spicyMax > 0){
     spicyBlock.classList.remove('hidden');
     let opts = ['<div class="spicy-opt active" data-l="0" onclick="selectIoSpicy(0)">0</div>'];
-    for (let i=1;i<=extras.spicyMax;i++) opts.push(`<div class="spicy-opt" data-l="${i}" onclick="selectIoSpicy(${i})">${i}</div>`);
+    for (let k=1;k<=ioState.spicyMax;k++) opts.push(`<div class="spicy-opt" data-l="${k}" onclick="selectIoSpicy(${k})">${k}</div>`);
     document.getElementById('ioSpicyList').innerHTML = opts.join('');
   } else spicyBlock.classList.add('hidden');
 
   const topBlock = document.getElementById('ioToppingBlock');
-  if (extras.toppings.length){
+  if (ioState.toppings.length){
     topBlock.classList.remove('hidden');
-    document.getElementById('ioToppingList').innerHTML = extras.toppings.map((t,i)=>
-      `<label class="topping-opt"><input type="checkbox" onchange="toggleIoTopping(${i}, this.checked)"><span>${t.name}</span><span class="muted" style="margin-left:auto">+${money(t.price)}</span></label>`).join('');
+    document.getElementById('ioToppingList').innerHTML = ioState.toppings.map((t,k)=>
+      `<label class="topping-opt"><input type="checkbox" onchange="toggleIoTopping(${k}, this.checked)"><span>${t.name}</span><span class="muted" style="margin-left:auto">+${money(t.price)}</span></label>`).join('');
   } else topBlock.classList.add('hidden');
 
   const sugarBlock = document.getElementById('ioSugarBlock');
   const iceBlock = document.getElementById('ioIceBlock');
-  if (extras.sugarIce){
+  if (ioState.sugarIce){
     sugarBlock.classList.remove('hidden');
     iceBlock.classList.remove('hidden');
-    document.getElementById('ioSugarList').innerHTML = SUGAR_LEVELS.map((label,i)=>
-      `<div class="level-opt ${i===1?'active':''}" data-i="${i}" onclick="selectIoSugar(${i})">${label}</div>`).join('');
-    document.getElementById('ioIceList').innerHTML = ICE_LEVELS.map((label,i)=>
-      `<div class="level-opt ${i===1?'active':''}" data-i="${i}" onclick="selectIoIce(${i})">${label}</div>`).join('');
+    document.getElementById('ioSugarList').innerHTML = SUGAR_LEVELS.map((label,k)=>
+      `<div class="level-opt ${k===1?'active':''}" data-i="${k}" onclick="selectIoSugar(${k})">${label}</div>`).join('');
+    document.getElementById('ioIceList').innerHTML = ICE_LEVELS.map((label,k)=>
+      `<div class="level-opt ${k===1?'active':''}" data-i="${k}" onclick="selectIoIce(${k})">${label}</div>`).join('');
   } else { sugarBlock.classList.add('hidden'); iceBlock.classList.add('hidden'); }
 
+  document.getElementById('ioBuilderTitle').textContent = 'Tuỳ chọn cho ly ' + (ioState.selSize ? ioState.selSize.name : ioState.name) + ' này';
+  document.getElementById('ioQty').textContent = '1';
+  document.getElementById('ioBuilderPanel').classList.remove('hidden');
   updateIoTotal();
-  document.getElementById('modalItemOptions').classList.add('active');
+  document.getElementById('ioBuilderPanel').scrollIntoView({behavior:'smooth', block:'nearest'});
 }
-function selectIoSize(i){
-  ioState.selSize = ioState.sizes[i];
-  document.querySelectorAll('#ioSizeList .size-opt').forEach((el,idx)=>el.classList.toggle('active', idx===i));
-  updateIoTotal();
+function cancelIoBuild(){
+  ioBuilding = false;
+  document.getElementById('ioBuilderPanel').classList.add('hidden');
+  const rowCount = ioState.sizes.length || 1;
+  for (let r=0;r<rowCount;r++){
+    const row = document.getElementById('ioSizeRow'+r); const btn = document.getElementById('ioSizeBtn'+r);
+    if (!row) continue;
+    btn.disabled = false;
+    row.classList.remove('building','locked');
+  }
+}
+function renderIoCartSummary(){
+  const block = document.getElementById('ioCartSummaryBlock');
+  const lines = cartVariants.filter(v=>v.id===ioState.id);
+  if (!lines.length){ block.classList.add('hidden'); return; }
+  block.classList.remove('hidden');
+  document.getElementById('ioCartSummaryList').innerHTML = lines.map(v=>{
+    const parts = [];
+    if (v.size) parts.push('size ' + v.size);
+    if (v.spicy!==null && v.spicy!==undefined) parts.push('cay ' + v.spicy);
+    if (v.sugar) parts.push(v.sugar);
+    if (v.ice) parts.push(v.ice);
+    if (v.toppings && v.toppings.length) parts.push('+' + v.toppings.join(', +'));
+    return `${v.qty} ly${parts.length ? ' (' + parts.join(' · ') + ')' : ''} — ${money(v.unitPrice*v.qty)}`;
+  }).join('<br>');
 }
 function selectIoSpicy(level){
   ioState.selSpicy = level;
@@ -1400,9 +1474,11 @@ function ioUnitPrice(){
   return base + toppingSum;
 }
 function updateIoTotal(){
-  document.getElementById('ioBasePrice').textContent = money(ioState.selSize ? ioState.selSize.price : ioState.basePrice);
+  const btn = document.getElementById('btnAddVariant');
+  if (btn && !document.getElementById('ioTotalPrice')) btn.innerHTML = '✓ OK, thêm ly này · <span id="ioTotalPrice"></span>';
   document.getElementById('ioTotalPrice').textContent = money(ioUnitPrice() * ioState.qty);
 }
+let ioAddFeedbackTimer = null;
 function confirmAddVariant(){
   const unitPrice = ioUnitPrice();
   const sugarPart = ioState.sugarIce ? SUGAR_LEVELS[ioState.selSugar] : '';
@@ -1418,9 +1494,16 @@ function confirmAddVariant(){
     sugar: sugarPart, ice: icePart,
     qty: ioState.qty, unitPrice
   });
-  closeModal('modalItemOptions');
   renderMenu();
   updateCartBar();
+  renderIoCartSummary();
+  // Xong 1 ly -> đóng panel, mở khoá lại tất cả size để chọn ly tiếp theo
+  // (khác topping/đường/đá thoải mái, mỗi lần OK là 1 (hoặc nhiều) ly riêng biệt).
+  cancelIoBuild();
+  const btn = document.getElementById('btnAddVariant');
+  btn.textContent = '✓ Đã thêm vào giỏ!';
+  clearTimeout(ioAddFeedbackTimer);
+  ioAddFeedbackTimer = setTimeout(()=>{ updateIoTotal(); }, 900);
 }
 function variantLabel(v){
   const parts = [];
@@ -1628,7 +1711,6 @@ function applyRoleVisibility(){
   const isOwner = mgmtRole === 'admin';
   document.getElementById('roleLabel').textContent = viaMaster ? '🏢 Chủ chuỗi · Đang quản lý hộ' : (isOwner ? '🔐 Chủ quán · Toàn quyền' : '👨‍🍳 Nhân viên · Bếp & Kho');
   document.getElementById('btnBackToMaster').classList.toggle('hidden', !viaMaster);
-  document.getElementById('btnSwitchRest').classList.toggle('hidden', viaMaster);
   const btnLogoutSettings = document.getElementById('btnAdminLogoutSettings');
   if (btnLogoutSettings) btnLogoutSettings.textContent = viaMaster ? '🏬 Về quản lý chuỗi' : '🚪 Đăng xuất';
   document.querySelectorAll('.owner-only').forEach(el => el.classList.toggle('hidden', !isOwner));
@@ -1729,6 +1811,15 @@ function renderMenuAdmin(){
 let miSizesArr = [], miToppingsArr = [];
 
 function toggleMiBlock(blockId, show){ document.getElementById(blockId).classList.toggle('hidden', !show); }
+function toggleMiSugarIce(checked){
+  document.getElementById('miSpicyToggleRow').classList.toggle('hidden', checked);
+  document.getElementById('miSugarIceNote').classList.toggle('hidden', !checked);
+  if (checked){
+    // Món nước (đường/đá) thì không cần độ cay -> tự tắt để tránh gán nhầm
+    document.getElementById('miHasSpicy').checked = false;
+    toggleMiBlock('miSpicyBlock', false);
+  }
+}
 
 function escHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
 
@@ -1840,6 +1931,7 @@ function openMenuItemModal(id){
   document.getElementById('miSpicyMax').value = 7;
 
   document.getElementById('miHasSugarIce').checked = !!e.sugarIce;
+  toggleMiSugarIce(!!e.sugarIce);
 
   miToppingsArr = e.toppings.length ? JSON.parse(JSON.stringify(e.toppings)) : [];
   document.getElementById('miHasTopping').checked = miToppingsArr.length>0;
@@ -1864,7 +1956,7 @@ async function saveMenuItem(){
   }
   const sizes = hasSize ? [...quickSizes, ...miSizesArr.filter(s=>s.name && s.name.trim())] : [];
   const toppings = hasTopping ? miToppingsArr.filter(t=>t.name && t.name.trim()) : [];
-  const spicyMax = hasSpicy ? 7 : 0;
+  const spicyMax = (hasSpicy && !hasSugarIce) ? 7 : 0;
   if (hasSize && sizes.length===0) return alert('Tick chọn ít nhất 1 size (M/L) hoặc thêm size khác!');
 
   const data = {
