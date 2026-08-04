@@ -81,6 +81,15 @@ label { font-size:11px; font-weight:700; color:#64748b; text-transform:uppercase
 .modal-box { background:#fff; width:100%; max-width:480px; border-radius:16px 16px 0 0; padding:16px; max-height:85vh; overflow-y:auto; }
 .modal-close { text-align:right; font-size:13px; color:#64748b; margin-bottom:8px; cursor:pointer; }
 .list-row { display:flex; justify-content:space-between; align-items:center; padding:8px 0; border-bottom:1px solid #f1f5f9; }
+.cat-group-header { display:flex; justify-content:space-between; align-items:center; margin:16px 0 4px; padding-bottom:4px; border-bottom:2px solid #312e81; }
+.cat-group-header:first-child { margin-top:0; }
+.cat-group-title { font-size:13px; font-weight:800; color:#312e81; text-transform:uppercase; letter-spacing:.3px; }
+.cat-group-count { font-size:11px; color:#94a3b8; font-weight:700; }
+.cat-mgmt-row { display:flex; align-items:center; gap:8px; padding:9px 0; border-bottom:1px solid #f1f5f9; }
+.cat-mgmt-name { flex:1; font-weight:700; font-size:14px; }
+.cat-mgmt-count { font-size:11px; color:#94a3b8; font-weight:600; margin-right:2px; }
+.cat-mgmt-arrows { display:flex; flex-direction:column; gap:1px; }
+.cat-mgmt-arrows button { border:none; background:#f1f5f9; color:#312e81; width:22px; height:16px; font-size:10px; border-radius:4px; cursor:pointer; padding:0; line-height:1; }
 .icon-btn { background:none; border:none; font-size:16px; cursor:pointer; padding:4px; }
 .spin { display:inline-block; width:14px; height:14px; border:2px solid #cbd5e1; border-top-color:#d97706; border-radius:50%; animation:spin 0.7s linear infinite; vertical-align:middle; }
 @keyframes spin { to { transform:rotate(360deg); } }
@@ -328,6 +337,9 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
         <button class="btn btn-primary" onclick="openMenuItemModal()">+ Thêm món mới</button>
         <button class="btn btn-outline" onclick="openBulkImportModal()">📋 Nhập nhanh theo menu</button>
       </div>
+      <div class="row" style="margin-top:8px">
+        <button class="btn btn-outline" onclick="openCategoryModal()">📂 Quản lý danh mục</button>
+      </div>
       <div id="menuAdminList" style="margin-top:12px"></div>
     </div>
 
@@ -503,6 +515,19 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
 
       <button class="btn btn-primary" style="margin-top:14px" onclick="saveMenuItem()">Lưu</button>
       <button class="btn btn-red" style="margin-top:8px" id="miDeleteBtn" onclick="deleteMenuItem()">Xóa món này</button>
+    </div>
+  </div>
+
+  <div class="modal-bg" id="modalCategoryManage">
+    <div class="modal-box">
+      <div class="modal-close" onclick="closeModal('modalCategoryManage')">✕ Đóng</div>
+      <div class="card-title">📂 Quản lý danh mục món</div>
+      <p class="muted">Thứ tự ở đây quyết định thứ tự danh mục hiện ra trong Thực đơn (cả khách hàng và trang quản lý). Đổi tên sẽ tự cập nhật cho mọi món đang dùng danh mục đó.</p>
+      <div id="catMgmtList" style="margin-top:6px"></div>
+      <div class="row" style="margin-top:12px">
+        <input id="inpNewCategory" placeholder="Tên danh mục mới (VD: Món chính)" style="flex:1">
+        <button type="button" class="tiny-btn" style="margin-top:0" onclick="addCategoryFromModal()">+ Thêm danh mục</button>
+      </div>
     </div>
   </div>
 
@@ -817,6 +842,7 @@ async function apiPost(body){
       }
       case 'saveMenuItem': return await sbSaveMenuItem(body);
       case 'deleteMenuItem': { const { error } = await sb.from('menu').delete().eq('id', body.id).eq('restaurantId', currentRid); if(error) throw error; return {ok:true}; }
+      case 'renameMenuCategory': { const { error } = await sb.from('menu').update({category: body.newName}).eq('restaurantId', currentRid).eq('category', body.oldName); if(error) throw error; return {ok:true}; }
       case 'saveInventoryItem': return await sbSaveInventoryItem(body);
       case 'deleteInventoryItem': { const { error } = await sb.from('inventory').delete().eq('id', body.id).eq('restaurantId', currentRid); if(error) throw error; return {ok:true}; }
       case 'saveStocktake': return await sbSaveStocktake(body);
@@ -1327,7 +1353,9 @@ function showMenu(){
 }
 
 function renderMenu(){
-  const cats = [...new Set(Object.values(menuItems).map(m=>m.category||'Khác'))];
+  const usedCats = new Set(Object.values(menuItems).map(m=>m.category||'Khác'));
+  const cats = orderedCategoryList().filter(c=>usedCats.has(c));
+  usedCats.forEach(c=>{ if (!cats.includes(c)) cats.push(c); });
   const tabsEl = document.getElementById('menuCatTabs');
   if (tabsEl.children.length===0 && cats.length){
     tabsEl.innerHTML = cats.map((c,i)=>`<div class="tab ${i===0?'active':''}" onclick="filterMenuCat(this,'${c}')">${c}</div>`).join('');
@@ -1888,28 +1916,42 @@ async function setOrderStatus(id, status){
 }
 
 /* ---- MENU MGMT ---- */
-function renderMenuAdmin(){
-  const list = document.getElementById('menuAdminList');
-  const entries = Object.entries(menuItems);
-  if (entries.length===0){ list.innerHTML='<p class="muted">Chưa có món nào.</p>'; return; }
-  list.innerHTML = entries.map(([id,m])=>{
-    const e = parseItemExtras(m);
-    const tags = [];
-    if (m.image) tags.push('<span class="mini-tag">🖼️ Ảnh</span>');
-    if (e.sizes.length) tags.push(`<span class="mini-tag">📏 ${e.sizes.length} size</span>`);
-    if (e.spicyMax>0) tags.push(`<span class="mini-tag">🌶️ 0-${e.spicyMax}</span>`);
-    if (e.toppings.length) tags.push(`<span class="mini-tag">➕ ${e.toppings.length} topping</span>`);
-    return `
+function renderMenuItemRow(id, m){
+  const e = parseItemExtras(m);
+  const tags = [];
+  if (m.image) tags.push('<span class="mini-tag">🖼️ Ảnh</span>');
+  if (e.sizes.length) tags.push(`<span class="mini-tag">📏 ${e.sizes.length} size</span>`);
+  if (e.spicyMax>0) tags.push(`<span class="mini-tag">🌶️ 0-${e.spicyMax}</span>`);
+  if (e.toppings.length) tags.push(`<span class="mini-tag">➕ ${e.toppings.length} topping</span>`);
+  return `
     <div class="list-row">
       <div class="mi-row-main">
         ${m.image?`<img class="mi-thumb" src="${driveToDirectUrl(m.image)}">`:''}
-        <div><b>${m.name}</b><br><span class="muted">${money(m.price)} • ${m.category||''} ${m.available===false||m.available==='FALSE'?'• Đang tắt bán':''}</span>
+        <div><b>${m.name}</b><br><span class="muted">${money(m.price)} ${m.available===false||m.available==='FALSE'?'• Đang tắt bán':''}</span>
         ${tags.length?`<div class="mini-tags">${tags.join('')}</div>`:''}
         </div>
       </div>
       <button class="icon-btn" onclick='openMenuItemModal("${id}")'>✏️</button>
     </div>`;
-  }).join('');
+}
+function renderMenuAdmin(){
+  const list = document.getElementById('menuAdminList');
+  const entries = Object.entries(menuItems);
+  if (entries.length===0){ list.innerHTML='<p class="muted">Chưa có món nào.</p>'; return; }
+  const cats = orderedCategoryList();
+  const byCat = {};
+  entries.forEach(([id,m])=>{
+    const c = (m.category||'').trim() || 'Khác';
+    (byCat[c] = byCat[c]||[]).push([id,m]);
+  });
+  const allCats = [...cats, ...Object.keys(byCat).filter(c=>!cats.includes(c))];
+  list.innerHTML = allCats.filter(c=>byCat[c] && byCat[c].length).map(c=>`
+    <div class="cat-group-header">
+      <span class="cat-group-title">${escHtml(c)}</span>
+      <span class="cat-group-count">${byCat[c].length} món</span>
+    </div>
+    ${byCat[c].map(([id,m])=>renderMenuItemRow(id,m)).join('')}
+  `).join('');
 }
 
 let miSizesArr = [], miToppingsArr = [];
@@ -1929,11 +1971,114 @@ function escHtml(s){ return String(s==null?'':s).replace(/&/g,'&amp;').replace(/
 
 function renderMiCatChips(){
   const el = document.getElementById('miCatChips'); if (!el) return;
-  const cats = [...new Set(Object.values(menuItems).map(m=>(m.category||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'vi'));
+  const cats = getCategoryCatalog();
   el.innerHTML = cats.length ? cats.map(c=>`<div class="chip" onclick="pickMiCatChip(this)">${escHtml(c)}</div>`).join('')
-    : '<span class="muted" style="font-size:12px">Chưa có danh mục nào được lưu</span>';
+    : '<span class="muted" style="font-size:12px">Chưa có danh mục nào - thêm ở nút "📂 Quản lý danh mục" hoặc gõ tên mới bên trên</span>';
 }
 function pickMiCatChip(el){ document.getElementById('miCat').value = el.textContent; }
+
+/* ---- QUẢN LÝ DANH MỤC MÓN ---- */
+function getCategoryCatalog(){
+  return safeJSON(restaurantInfo && restaurantInfo.categoryCatalog, []);
+}
+async function persistCategoryCatalog(list){
+  restaurantInfo.categoryCatalog = JSON.stringify(list);
+  let res;
+  try { res = await apiPost({ action:'saveRestaurant', id: currentRid, categoryCatalog: JSON.stringify(list) }); }
+  catch(err){ return alert('Lỗi lưu danh mục lên Supabase: ' + (err && err.message ? err.message : err)); }
+  if (!res || !res.ok) alert('Lỗi lưu danh mục lên Supabase: ' + (res && res.error ? res.error : 'lỗi không xác định'));
+}
+function orderedCategoryList(){
+  // Danh mục theo thứ tự đã lưu, cộng thêm danh mục nào đang dùng trong món mà chưa có trong danh mục (an toàn dữ liệu cũ)
+  const catalog = getCategoryCatalog();
+  const used = [...new Set(Object.values(menuItems).map(m=>(m.category||'').trim()).filter(Boolean))];
+  const extra = used.filter(c=>!catalog.includes(c)).sort((a,b)=>a.localeCompare(b,'vi'));
+  return [...catalog, ...extra];
+}
+function categoryItemCount(cat){
+  return Object.values(menuItems).filter(m=>(m.category||'Khác')===cat).length;
+}
+function openCategoryModal(){
+  document.getElementById('inpNewCategory').value = '';
+  renderCategoryManageList();
+  document.getElementById('modalCategoryManage').classList.add('active');
+}
+function renderCategoryManageList(){
+  const el = document.getElementById('catMgmtList'); if (!el) return;
+  const cats = orderedCategoryList();
+  if (!cats.length){ el.innerHTML = '<p class="muted">Chưa có danh mục nào - thêm ở ô bên dưới.</p>'; return; }
+  el.innerHTML = cats.map((c,i)=>`
+    <div class="cat-mgmt-row">
+      <div class="cat-mgmt-arrows">
+        <button type="button" onclick="moveCategory(${i},-1)" ${i===0?'disabled':''}>▲</button>
+        <button type="button" onclick="moveCategory(${i},1)" ${i===cats.length-1?'disabled':''}>▼</button>
+      </div>
+      <div class="cat-mgmt-name">${escHtml(c)}</div>
+      <div class="cat-mgmt-count">${categoryItemCount(c)} món</div>
+      <button type="button" class="icon-btn" onclick="renameCategory(${i})">✏️</button>
+      <button type="button" class="icon-btn" onclick="deleteCategory(${i})">🗑️</button>
+    </div>`).join('');
+}
+async function addCategoryFromModal(){
+  const inp = document.getElementById('inpNewCategory');
+  const name = inp.value.trim();
+  if (!name) return alert('Nhập tên danh mục!');
+  const catalog = getCategoryCatalog();
+  if (catalog.some(c=>c.toLowerCase()===name.toLowerCase())) return alert('Danh mục này đã có rồi!');
+  catalog.push(name);
+  await persistCategoryCatalog(catalog);
+  inp.value = '';
+  renderCategoryManageList();
+  renderMiCatChips();
+}
+async function moveCategory(i, dir){
+  const cats = orderedCategoryList();
+  const j = i + dir;
+  if (j<0 || j>=cats.length) return;
+  [cats[i], cats[j]] = [cats[j], cats[i]];
+  await persistCategoryCatalog(cats);
+  renderCategoryManageList();
+  renderMiCatChips();
+  renderMenu(); renderMenuAdmin();
+}
+async function renameCategory(i){
+  const cats = orderedCategoryList();
+  const oldName = cats[i];
+  const newName = prompt('Đổi tên danh mục:', oldName);
+  if (newName===null) return;
+  const trimmed = newName.trim();
+  if (!trimmed) return alert('Tên danh mục không được để trống!');
+  if (trimmed!==oldName && cats.some(c=>c.toLowerCase()===trimmed.toLowerCase())) return alert('Đã có danh mục trùng tên này rồi!');
+  if (trimmed===oldName) return;
+  const count = categoryItemCount(oldName);
+  if (count>0){
+    const res = await apiPost({ action:'renameMenuCategory', oldName, newName: trimmed });
+    if (!res || !res.ok) return alert('Lỗi cập nhật món: ' + (res && res.error ? res.error : 'lỗi không xác định'));
+  }
+  cats[i] = trimmed;
+  await persistCategoryCatalog(cats);
+  await fetchAll();
+  renderCategoryManageList();
+  renderMiCatChips();
+}
+async function deleteCategory(i){
+  const cats = orderedCategoryList();
+  const name = cats[i];
+  const count = categoryItemCount(name);
+  const msg = count>0
+    ? `Xóa danh mục "${name}"? ${count} món đang dùng danh mục này sẽ chuyển sang "Khác".`
+    : `Xóa danh mục "${name}"?`;
+  if (!confirm(msg)) return;
+  if (count>0){
+    const res = await apiPost({ action:'renameMenuCategory', oldName: name, newName: 'Khác' });
+    if (!res || !res.ok) return alert('Lỗi cập nhật món: ' + (res && res.error ? res.error : 'lỗi không xác định'));
+  }
+  cats.splice(i,1);
+  await persistCategoryCatalog(cats);
+  await fetchAll();
+  renderCategoryManageList();
+  renderMiCatChips();
+}
 
 function getToppingCatalog(){
   return safeJSON(restaurantInfo && restaurantInfo.toppingCatalog, []);
@@ -2076,6 +2221,13 @@ async function saveMenuItem(){
     sugarIce: hasSugarIce
   };
   if (!data.name) return alert('Nhập tên món!');
+  {
+    const catalog = getCategoryCatalog();
+    if (!catalog.some(c=>c.toLowerCase()===data.category.toLowerCase())){
+      catalog.push(data.category);
+      await persistCategoryCatalog(catalog);
+    }
+  }
   if (toppings.length){
     const catalog = getToppingCatalog();
     let changed = false;
@@ -2145,6 +2297,13 @@ async function runBulkImport(){
       available: true, image: '', sizes: JSON.stringify(it.sizes||[]), spicyMax: 0, toppings: JSON.stringify([])
     });
   }
+  const catalog = getCategoryCatalog();
+  let catChanged = false;
+  items.forEach(it=>{
+    const c = (it.category||'').trim();
+    if (c && !catalog.some(x=>x.toLowerCase()===c.toLowerCase())){ catalog.push(c); catChanged = true; }
+  });
+  if (catChanged) await persistCategoryCatalog(catalog);
   document.getElementById('bulkImportPreview').textContent = `Đã nhập ${items.length} món!`;
   await fetchAll();
   setTimeout(()=>closeModal('modalBulkImport'), 800);
