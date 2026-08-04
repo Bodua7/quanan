@@ -263,6 +263,7 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
     <textarea id="cartNote" rows="2" placeholder="VD: ít cay, không hành..."></textarea>
     <button class="btn btn-outline" style="margin-top:10px" onclick="showMenu()">← Chọn thêm món</button>
     <button class="btn btn-primary" style="margin-top:8px" id="btnSubmitOrder" onclick="submitOrder()">✅ Xác nhận gửi tới quán</button>
+    <button class="btn btn-outline" style="margin-top:8px;color:#dc2626;border-color:#fca5a5" onclick="cancelCartAndReorder()">❌ Hủy đơn - Gọi lại từ đầu</button>
   </div>
 
   <!-- CUSTOMER: THEO DÕI ĐƠN -->
@@ -629,6 +630,23 @@ Mì cay gà - 40k"></textarea>
     </div>
   </div>
 
+  <div class="modal-bg" id="modalOrderEdit">
+    <div class="modal-box">
+      <div class="modal-close" onclick="closeModal('modalOrderEdit')">✕ Đóng</div>
+      <div class="card-title">🧾 Sửa đơn - Bàn <span id="oeTableNo"></span></div>
+      <p class="muted" style="margin-top:0">Sửa tên món, số lượng, đơn giá... Bill của khách sẽ tự cập nhật ngay.</p>
+      <input type="hidden" id="oeOrderId">
+      <div id="oeItemRows"></div>
+      <button type="button" class="tiny-btn" onclick="addOrderEditRow()">+ Thêm dòng món</button>
+      <label style="margin-top:10px">Ghi chú cho quán</label>
+      <textarea id="oeNote" rows="2"></textarea>
+      <div style="display:flex;justify-content:space-between;margin-top:10px;font-weight:800;font-size:15px">
+        <span>Tổng cộng</span><span id="oeTotal" style="color:#d97706">0đ</span>
+      </div>
+      <button class="btn btn-primary" style="margin-top:14px" onclick="saveOrderEdit()">💾 Lưu, cập nhật bill khách</button>
+    </div>
+  </div>
+
   <div class="modal-bg" id="modalRestaurant">
     <div class="modal-box">
       <div class="modal-close" onclick="closeModal('modalRestaurant')">✕ Đóng</div>
@@ -834,6 +852,7 @@ async function apiPost(body){
     switch(body.action){
       case 'addOrder': return await sbAddOrder(body);
       case 'updateOrderStatus': return await sbUpdateOrderStatus(body);
+      case 'updateOrderItems': return await sbUpdateOrderItems(body);
       case 'addFeedback': {
         const { error } = await sb.from('feedback').insert({ restaurantId: currentRid, orderId:body.orderId, table:body.table, rating:body.rating, comment:body.comment||'', createdAt: Date.now() });
         if (error) throw error;
@@ -873,6 +892,14 @@ async function sbAddOrder(body){
 
 async function sbUpdateOrderStatus(body){
   const { error } = await sb.from('orders').update({ status: body.status, updatedAt: Date.now() }).eq('id', body.id).eq('restaurantId', currentRid);
+  if (error) throw error;
+  return { ok:true };
+}
+
+async function sbUpdateOrderItems(body){
+  const { error } = await sb.from('orders').update({
+    items: JSON.stringify(body.items), total: body.total, note: body.note||'', updatedAt: Date.now()
+  }).eq('id', body.id).eq('restaurantId', currentRid);
   if (error) throw error;
   return { ok:true };
 }
@@ -1668,6 +1695,17 @@ async function submitOrder(){
   finally{ btn.disabled = false; btn.textContent = '✅ Xác nhận gửi tới quán'; }
 }
 
+function cancelCartAndReorder(){
+  if (cartCount()===0) return;
+  if (!confirm('Hủy toàn bộ món đang chọn và gọi lại từ đầu?')) return;
+  cart = {};
+  cartVariants = [];
+  const noteEl = document.getElementById('cartNote');
+  if (noteEl) noteEl.value = '';
+  updateCartBar();
+  showMenu();
+}
+
 /* ================= CUSTOMER: TRACK ORDER ================= */
 function showTrack(){
   hideAllScreens();
@@ -1906,6 +1944,7 @@ function renderOrders(){
       <div class="order-actions">
         ${next?`<button class="btn btn-blue btn-sm" onclick="setOrderStatus('${id}','${next}')">${nextLabel}</button>`:''}
         ${o.status!=='cancelled' && o.status!=='served' ?`<button class="btn btn-outline btn-sm" onclick="setOrderStatus('${id}','cancelled')">Hủy đơn</button>`:''}
+        ${o.status!=='cancelled' ?`<button class="btn btn-outline btn-sm" onclick="openOrderEditModal('${id}')">✏️ Sửa món/giá</button>`:''}
       </div>
     </div>`;
   }).join('');
@@ -1913,6 +1952,48 @@ function renderOrders(){
 async function setOrderStatus(id, status){
   await apiPost({action:'updateOrderStatus', id, status});
   fetchAll();
+}
+
+/* ---- ADMIN: SỬA MÓN/GIÁ CỦA ĐƠN (đồng bộ bill khách) ---- */
+let oeRows = [];
+function openOrderEditModal(id){
+  const o = ordersMap[id]; if (!o) return;
+  document.getElementById('oeOrderId').value = id;
+  document.getElementById('oeTableNo').textContent = o.table;
+  document.getElementById('oeNote').value = o.note || '';
+  oeRows = (o.items||[]).map(it=>({...it}));
+  renderOeItemRows();
+  document.getElementById('modalOrderEdit').classList.add('active');
+}
+function renderOeItemRows(){
+  const wrap = document.getElementById('oeItemRows');
+  wrap.innerHTML = oeRows.map((it,i)=>`
+    <div class="row" style="margin-bottom:6px;align-items:center">
+      <input value="${escHtml(it.name||'')}" placeholder="Tên món" oninput="oeRows[${i}].name=this.value" style="flex:2">
+      <input type="number" value="${it.qty||1}" placeholder="SL" oninput="oeRows[${i}].qty=Number(this.value)||0;recalcOeTotal()" style="max-width:60px">
+      <input type="number" value="${it.price||0}" placeholder="Đơn giá" oninput="oeRows[${i}].price=Number(this.value)||0;recalcOeTotal()" style="max-width:100px">
+      <span onclick="removeOrderEditRow(${i})" style="color:#dc2626;cursor:pointer;font-size:18px">✕</span>
+    </div>`).join('');
+  recalcOeTotal();
+}
+function addOrderEditRow(){ oeRows.push({name:'', qty:1, price:0}); renderOeItemRows(); }
+function removeOrderEditRow(i){ oeRows.splice(i,1); renderOeItemRows(); }
+function recalcOeTotal(){
+  const total = oeRows.reduce((s,it)=> s + (Number(it.price)||0)*(Number(it.qty)||0), 0);
+  document.getElementById('oeTotal').textContent = money(total);
+  return total;
+}
+async function saveOrderEdit(){
+  const id = document.getElementById('oeOrderId').value;
+  const items = oeRows.filter(it=> (it.name||'').trim() !== '');
+  if (!items.length) return alert('Đơn cần ít nhất 1 món!');
+  const total = items.reduce((s,it)=> s + (Number(it.price)||0)*(Number(it.qty)||0), 0);
+  const note = document.getElementById('oeNote').value.trim();
+  const res = await apiPost({action:'updateOrderItems', id, items, total, note});
+  if (res.ok){
+    closeModal('modalOrderEdit');
+    await fetchAll();
+  } else alert('Lỗi khi lưu: ' + (res.error||''));
 }
 
 /* ---- MENU MGMT ---- */
