@@ -237,9 +237,10 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
   <!-- CUSTOMER: CHỌN BÀN -->
   <div id="scr-table" class="pad hidden">
     <div class="card">
-      <div class="card-title">👋 Xin chào! Vui lòng chọn số bàn</div>
-      <label>Số bàn của bạn</label>
-      <input type="number" id="inpTable" placeholder="VD: 5">
+      <div class="card-title">👋 Xin chào! Vui lòng chọn/xác nhận số bàn</div>
+      <label>Bạn đang ngồi bàn số mấy?</label>
+      <input type="number" id="inpTable" placeholder="VD: 5" min="1">
+      <p class="muted" id="tableHint" style="margin-top:4px"></p>
       <button class="btn btn-primary" style="margin-top:14px" onclick="confirmTable()">Xem thực đơn →</button>
     </div>
   </div>
@@ -385,6 +386,9 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
         <div class="card-title">🏪 Thông tin quán</div>
         <label>Tên quán</label>
         <input id="setRestName">
+        <label>Số lượng bàn của quán</label>
+        <input id="setTableCount" type="number" min="1" placeholder="VD: 12">
+        <p class="muted" style="margin-top:2px">Khách sẽ thấy gợi ý số bàn hợp lệ (VD: 1-12) khi nhập số bàn, tránh nhập nhầm.</p>
         <button class="btn btn-primary" style="margin-top:10px" onclick="saveRestName()">Lưu</button>
       </div>
       <div class="card">
@@ -701,6 +705,7 @@ let cart = {};
 let cartVariants = [];
 let menuItems = {};
 let ordersMap = {};
+let ordersFetched = false; // chỉ true sau khi tải dữ liệu đơn hàng thành công lần đầu, tránh báo nhầm "đơn bị xóa" lúc chưa kịp tải xong
 let inventoryItems = {};
 let staffList = {};
 let restaurantInfo = {};      // hồ sơ công khai của quán đang chọn (thay cho "settings" cũ)
@@ -882,23 +887,11 @@ async function apiPost(body){
 
 async function sbAddOrder(body){
   const now = Date.now();
-  const clientId = body.clientId || null;
   const { data, error } = await sb.from('orders').insert({
     restaurantId: currentRid, table: body.table, items: JSON.stringify(body.items), total: body.total,
-    note: body.note||'', status:'pending', createdAt: now, updatedAt: now, clientId
+    note: body.note||'', status:'pending', createdAt: now, updatedAt: now
   }).select().single();
-  if (error){
-    // Mạng có thể đã rớt SAU KHI đơn được ghi vào server nhưng TRƯỚC KHI
-    // phản hồi kịp về máy khách (rất hay gặp với wifi/4G chập chờn ở quán).
-    // Trước khi báo lỗi "mất kết nối", kiểm tra lại xem đơn với clientId này
-    // đã thực sự nằm trong DB chưa - tránh báo lỗi oan và tránh tạo đơn trùng
-    // nếu khách bấm gửi lại.
-    if (clientId){
-      const { data: existing } = await sb.from('orders').select('*').eq('clientId', clientId).maybeSingle();
-      if (existing) return { ok:true, id:existing.id };
-    }
-    throw error;
-  }
+  if (error) throw error;
   return { ok:true, id:data.id };
 }
 
@@ -1042,6 +1035,7 @@ async function fetchAll(){
     if (data.ok){
       menuItems = toMap(data.menu);
       ordersMap = toMap(data.orders);
+      ordersFetched = true;
       inventoryItems = toMap(data.inventory);
       staffList = toMap(data.staff);
       restaurantInfo = data.restaurant || {};
@@ -1054,6 +1048,7 @@ async function fetchAll(){
 function onDataUpdate(){
   document.getElementById('restName').textContent = '🍜 ' + (restaurantInfo.name || 'Quán Ăn');
   document.getElementById('setRestName').value = restaurantInfo.name || '';
+  document.getElementById('setTableCount').value = restaurantInfo.tableCount || '';
   document.getElementById('setRestAddr').value = restaurantInfo.address || '';
   document.getElementById('setRestTagline').value = restaurantInfo.tagline || '';
   document.getElementById('setLogo1').value = restaurantInfo.logo1 || '';
@@ -1152,9 +1147,14 @@ function showSplash(){
 }
 
 function fromSplash(){
-  if (currentTable) { showMenu(); return; }
+  // Luôn cho khách nhập lại số bàn ở đây, KHÔNG dùng/gợi ý số bàn cũ đã lưu -
+  // vì không phải lần nào khách cũng ngồi đúng bàn cũ (đổi bàn, quán chỉ có 1 QR chung...).
   hideAllScreens();
   document.getElementById('scr-table').classList.remove('hidden');
+  document.getElementById('inpTable').value = '';
+  const tc = Number(restaurantInfo.tableCount) || 0;
+  const hint = document.getElementById('tableHint');
+  hint.textContent = tc > 0 ? `Quán có bàn từ 1 đến ${tc}, hãy nhập đúng số bàn bạn đang ngồi nhé.` : '';
 }
 
 function boot(){
@@ -1193,6 +1193,11 @@ function boot(){
 function confirmTable(){
   const v = document.getElementById('inpTable').value.trim();
   if(!v) return alert('Vui lòng nhập số bàn!');
+  const tc = Number(restaurantInfo.tableCount) || 0;
+  const n = Number(v);
+  if (tc > 0 && (!Number.isInteger(n) || n < 1 || n > tc)){
+    return alert(`Quán chỉ có bàn từ 1 đến ${tc}, vui lòng nhập lại đúng số bàn bạn đang ngồi!`);
+  }
   currentTable = v;
   localStorage.setItem('qa_table', v);
   showMenu();
@@ -1390,14 +1395,8 @@ function showMenu(){
   updateCartBar();
 }
 
-// Danh mục "Topping" không hiển thị như 1 mục riêng để gọi ở trang menu -
-// topping chỉ nên được chọn làm phần thêm bên trong món nước (qua "Chọn"),
-// không phải 1 món gọi độc lập. Item topping vẫn giữ available=true bình
-// thường để không ảnh hưởng danh mục topping / gợi ý topping bên quản lý.
-function isToppingCategory(cat){ return (cat||'').trim().toLowerCase()==='topping'; }
-
 function renderMenu(){
-  const availableItems = Object.values(menuItems).filter(m=> m.available!==false && m.available!=='FALSE' && !isToppingCategory(m.category));
+  const availableItems = Object.values(menuItems).filter(m=> m.available!==false && m.available!=='FALSE');
   const usedCats = new Set(availableItems.map(m=>m.category||'Khác'));
   const cats = orderedCategoryList().filter(c=>usedCats.has(c));
   usedCats.forEach(c=>{ if (!cats.includes(c)) cats.push(c); });
@@ -1416,7 +1415,6 @@ function filterMenuCat(el, cat){
     el.classList.add('active');
   }
   const list = document.getElementById('menuList');
-  if (isToppingCategory(cat)){ list.innerHTML = '<p class="muted">Chưa có món trong danh mục này.</p>'; return; }
   const entries = Object.entries(menuItems).filter(([id,m])=> (m.category||'Khác')===cat && m.available!==false && m.available!=='FALSE');
   if (entries.length===0){ list.innerHTML = '<p class="muted">Chưa có món trong danh mục này.</p>'; return; }
   list.innerHTML = `<div class="card">` + entries.map(([id,m])=>{
@@ -1689,39 +1687,38 @@ function showCart(){
   document.getElementById('cartTotal').textContent = money(cartTotal());
 }
 
-// Giữ nguyên 1 clientId cho tới khi đơn THỰC SỰ gửi thành công. Nếu khách
-// bấm "gửi" nhiều lần liên tiếp (do lần trước báo lỗi mạng), mọi lần gửi
-// đều dùng chung clientId này -> sbAddOrder sẽ nhận ra đơn đã tồn tại thay
-// vì tạo đơn trùng, và tránh báo lỗi oan khi đơn đã vào tới quán rồi.
-let pendingOrderClientId = null;
-
 async function submitOrder(){
   if (cartCount()===0) return alert('Giỏ hàng trống!');
   const btn = document.getElementById('btnSubmitOrder');
   btn.disabled = true; btn.textContent = 'Đang gửi...';
+  // Loại bỏ các món đã bị quán xóa/ngừng bán khỏi giỏ trước khi gửi, tránh lỗi khi đọc dữ liệu món không còn tồn tại
+  const missingIds = Object.keys(cart).filter(id => !menuItems[id]);
+  if (missingIds.length){
+    missingIds.forEach(id => delete cart[id]);
+    updateCartBar();
+    btn.disabled = false; btn.textContent = '✅ Xác nhận gửi tới quán';
+    alert('Một số món trong giỏ đã bị quán ngừng bán nên đã được bỏ khỏi đơn. Vui lòng kiểm tra lại giỏ hàng rồi gửi lại nhé!');
+    showCart();
+    return;
+  }
   const simpleItems = Object.entries(cart).map(([id,q])=>({id, name:menuItems[id].name, price:menuItems[id].price, qty:q}));
   const variantItems = cartVariants.map(v=>({id:v.id, name:variantLabel(v), price:v.unitPrice, qty:v.qty, size:v.size, spicy:v.spicy, toppings:v.toppings, sugar:v.sugar, ice:v.ice}));
   const items = simpleItems.concat(variantItems);
-  if (!pendingOrderClientId){
-    pendingOrderClientId = (crypto.randomUUID ? crypto.randomUUID() : 'c-' + Date.now() + '-' + Math.random().toString(36).slice(2));
-  }
   try{
     const res = await apiPost({
       action:'addOrder', table: currentTable, items, total: cartTotal(),
-      note: document.getElementById('cartNote').value.trim(),
-      clientId: pendingOrderClientId
+      note: document.getElementById('cartNote').value.trim()
     });
     if (res.ok){
       currentOrderId = res.id;
       localStorage.setItem('qa_orderId', currentOrderId);
-      pendingOrderClientId = null;
       cart = {};
       cartVariants = [];
       document.getElementById('cartNote').value='';
       await fetchAll();
       showTrack();
     } else alert('Lỗi khi gửi đơn: ' + (res.error||''));
-  } catch(err){ alert('Không kết nối được tới quán, thử lại nhé! Nếu vẫn thấy lỗi, hãy tải lại trang trước khi gửi lại - đơn có thể đã tới quán rồi.'); }
+  } catch(err){ alert('Không kết nối được tới quán, thử lại nhé!' + (err && err.message ? ('\n(' + err.message + ')') : '')); }
   finally{ btn.disabled = false; btn.textContent = '✅ Xác nhận gửi tới quán'; }
 }
 
@@ -1746,7 +1743,18 @@ function showTrack(){
 
 function renderTrackFromState(){
   const o = ordersMap[currentOrderId];
-  if (!o) return;
+  if (!ordersFetched) return; // chưa tải dữ liệu lần nào thì chưa kết luận được gì, chờ lần fetch tiếp theo
+  if (!o || o.status==='cancelled'){
+    // Đơn không còn tồn tại (quán đã xóa) hoặc đã bị hủy: không được kẹt lại màn hình cũ,
+    // phải dọn trạng thái và đưa khách quay về thực đơn để gọi lại.
+    localStorage.removeItem('qa_orderId');
+    currentOrderId = null;
+    hideAllScreens();
+    document.getElementById('scr-menu').classList.remove('hidden');
+    renderMenu();
+    alert(!o ? 'Đơn của bạn đã được quán xóa. Mời bạn chọn món và gọi lại nhé!' : 'Đơn của bạn đã bị quán hủy. Mời bạn chọn món và gọi lại nhé!');
+    return;
+  }
   document.getElementById('trackTableNo').textContent = o.table;
   renderTrackSteps(o.status);
   document.getElementById('trackItems').innerHTML = o.items.map(it=>`${it.name} x${it.qty} — ${money(it.price*it.qty)}`).join('<br>')
@@ -2602,9 +2610,14 @@ async function staffCheckOut(){
 
 /* ---- SETTINGS ---- */
 async function saveRestName(){
-  await apiPost({action:'saveSettings', name: document.getElementById('setRestName').value.trim()});
+  const tc = document.getElementById('setTableCount').value.trim();
+  await apiPost({
+    action:'saveSettings',
+    name: document.getElementById('setRestName').value.trim(),
+    tableCount: tc ? Number(tc) : null
+  });
   fetchAll();
-  alert('Đã lưu tên quán!');
+  alert('Đã lưu thông tin quán!');
 }
 async function saveSplashSettings(){
   const payload = {
