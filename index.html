@@ -227,6 +227,14 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
     <p class="splash-tagline" id="splashTagline"></p>
   </div>
 
+  <!-- Quán bị chủ chuỗi tạm ngưng: chặn mọi truy cập của khách/nhân viên/chủ quán -->
+  <div id="scr-suspended" class="pad hidden" style="text-align:center;padding-top:60px">
+    <div style="font-size:48px">🚫</div>
+    <h2 style="margin:12px 0 6px">Quán tạm ngừng phục vụ</h2>
+    <p class="muted">Quán hiện không nhận đơn. Vui lòng quay lại sau hoặc liên hệ trực tiếp với quán.</p>
+    <div class="splash-master" onclick="showMasterLogin()" title="Chủ chuỗi" style="position:static;display:inline-block;margin-top:20px">🏢</div>
+  </div>
+
   <div class="hd" id="hdBar">
     <div>
       <h1 id="restName">🍜 Quán Ăn</h1>
@@ -888,6 +896,9 @@ async function apiPost(body){
 }
 
 async function sbAddOrder(body){
+  const { data: r, error: rErr } = await sb.from('restaurants').select('active').eq('id', currentRid).maybeSingle();
+  if (rErr) throw rErr;
+  if (r && r.active === false) return { ok:false, error:'Quán hiện đang tạm ngừng nhận đơn, vui lòng quay lại sau!' };
   const now = Date.now();
   const { data, error } = await sb.from('orders').insert({
     restaurantId: currentRid, table: body.table, items: JSON.stringify(body.items), total: body.total,
@@ -1048,6 +1059,12 @@ async function fetchAll(){
 }
 
 function onDataUpdate(){
+  // Quán đã bị chủ chuỗi tạm ngưng -> chặn hết khách/nhân viên/chủ quán, chỉ chủ
+  // chuỗi vào qua Dashboard chuỗi (bấm "Vào quản lý", viaMaster=true) mới vào được.
+  if (currentRid && restaurantInfo && restaurantInfo.active === false && !viaMaster){
+    showSuspended();
+    return;
+  }
   document.getElementById('restName').textContent = '🍜 ' + (restaurantInfo.name || 'Quán Ăn');
   document.getElementById('setRestName').value = restaurantInfo.name || '';
   document.getElementById('setTableCount').value = restaurantInfo.tableCount || '';
@@ -1136,7 +1153,7 @@ function startRealtime(){
 
 /* ================= ROUTER ================= */
 function hideAllScreens(){
-  ['scr-restlist','scr-master-login','scr-master','scr-splash','scr-table','scr-menu','scr-cart','scr-track','scr-admin-login','scr-admin','scr-checkin']
+  ['scr-restlist','scr-master-login','scr-master','scr-splash','scr-suspended','scr-table','scr-menu','scr-cart','scr-track','scr-admin-login','scr-admin','scr-checkin']
     .forEach(id=>document.getElementById(id).classList.add('hidden'));
   document.getElementById('cartBar').classList.add('hidden');
   document.getElementById('hdBar').classList.remove('hidden');
@@ -1147,6 +1164,11 @@ function showSplash(){
   document.getElementById('hdBar').classList.add('hidden');
   document.getElementById('scr-splash').classList.remove('hidden');
   renderSplash();
+}
+function showSuspended(){
+  hideAllScreens();
+  document.getElementById('hdBar').classList.add('hidden');
+  document.getElementById('scr-suspended').classList.remove('hidden');
 }
 
 function fromSplash(){
@@ -1299,15 +1321,30 @@ function renderMasterList(){
   list.innerHTML = entries.map(r=>{
     const inactive = r.active===false || r.active==='FALSE';
     return `<div class="card">
-      <div class="card-title">🍜 ${r.name||'(chưa đặt tên)'} ${inactive?'<span class="muted">· đã tắt</span>':''}</div>
+      <div class="card-title">🍜 ${r.name||'(chưa đặt tên)'} ${inactive?'<span style="color:#dc2626">· 🚫 Đang tạm ngưng</span>':''}</div>
       <p class="muted">${r.address||''}</p>
       <div class="row" style="margin-top:8px">
         <button class="btn btn-outline btn-sm" onclick="openRestaurantModal('${r.id}')">✏️ Sửa</button>
         <button class="btn btn-blue btn-sm" onclick="enterRestaurantAsMaster('${r.id}')">🔑 Vào quản lý</button>
       </div>
+      <button class="btn btn-outline btn-sm" style="margin-top:6px" onclick="toggleRestaurantActive('${r.id}', ${inactive})">
+        ${inactive ? '✅ Khôi phục truy cập' : '🚫 Tạm ngưng (khóa mọi truy cập)'}
+      </button>
       <button class="btn btn-outline btn-sm" style="margin-top:6px; color:#d97706; border-color:#fbbf24" onclick="createTempAdminPin('${r.id}','${(r.name||'').replace(/'/g,"\\'")}')">🆘 Tạo mã tạm cho chủ quán quên PIN</button>
     </div>`;
   }).join('');
+}
+async function toggleRestaurantActive(id, currentlyInactive){
+  const wantActive = currentlyInactive; // đang tắt -> bật lại; đang bật -> tắt đi
+  const msg = wantActive
+    ? 'Khôi phục truy cập bình thường cho quán này? Khách, nhân viên, chủ quán sẽ dùng được ngay.'
+    : 'Tạm ngưng quán này? Khách sẽ không gọi món được, nhân viên/chủ quán sẽ không đăng nhập được cho tới khi bạn khôi phục lại. Dữ liệu vẫn được giữ nguyên, không mất gì.';
+  if (!confirm(msg)) return;
+  let res;
+  try { res = await apiPost({action:'saveRestaurant', id, active: wantActive}); }
+  catch(err){ return alert('Lỗi kết nối: ' + (err && err.message ? err.message : err)); }
+  if (!res || !res.ok) return alert('Không cập nhật được: ' + (res && res.error ? res.error : 'lỗi không xác định'));
+  loadMasterRestaurants();
 }
 async function changeMasterPin(){
   const oldPin = document.getElementById('mpOld').value.trim();
@@ -1388,7 +1425,7 @@ async function saveRestaurantMaster(){
 async function deleteRestaurantMaster(){
   const id = document.getElementById('mrId').value;
   if (!id) return;
-  if (confirm('Xóa quán này khỏi danh sách? Dữ liệu món/đơn/kho cũ của quán sẽ không hiện ra nữa (không tự xóa hẳn) - chỉ nên xóa quán tạo nhầm.')) {
+  if (confirm('⚠️ XÓA VĨNH VIỄN quán này?\nToàn bộ dữ liệu của quán - thực đơn, đơn hàng, kho hàng, nhân viên, chấm công, đánh giá... - sẽ bị xóa SẠCH, KHÔNG THỂ KHÔI PHỤC.\nNếu chỉ muốn ngừng hoạt động tạm thời (giữ lại dữ liệu), hãy dùng nút "🚫 Tạm ngưng" thay vì xóa.')) {
     let res;
     try { res = await apiPost({action:'deleteRestaurant', id}); }
     catch(err){ return alert('Lỗi kết nối: ' + (err && err.message ? err.message : err)); }
@@ -1848,6 +1885,9 @@ function checkStaffLocation(){
   });
 }
 async function adminLogin(){
+  if (restaurantInfo && restaurantInfo.active === false){
+    return alert('Quán hiện đang tạm ngừng hoạt động, không thể đăng nhập lúc này.');
+  }
   const pin = document.getElementById('inpAdminPin').value.trim();
   let res;
   try {
