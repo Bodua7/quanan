@@ -733,6 +733,25 @@ if (!isConfigured) document.getElementById('configNotice').classList.remove('hid
 
 const sb = isConfigured ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY) : null;
 
+/* FIX #15: version schema mong đợi ở bản index.html này - phải khớp với giá trị
+   'schemaVersion' trong bảng master trên Supabase (xem fix_15_schema_version.sql).
+   Mỗi khi chạy thêm 1 migration mới trong DB, nhớ cập nhật cả 2 chỗ (SQL và dòng
+   dưới đây) cho khớp, để app tự cảnh báo nếu deploy lệch. */
+const APP_SCHEMA_VERSION = "2026-08-05";
+async function checkSchemaVersion(){
+  if (!sb) return;
+  try{
+    const { data, error } = await sb.rpc('get_schema_version');
+    if (error) return; // hàm chưa tồn tại (project cũ chưa chạy fix #15) -> bỏ qua, không chặn app
+    if (data && data !== APP_SCHEMA_VERSION){
+      const bar = document.createElement('div');
+      bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#b91c1c;color:#fff;padding:8px 12px;font-size:13px;text-align:center';
+      bar.textContent = `⚠️ Database (${data}) và app (${APP_SCHEMA_VERSION}) đang lệch version - hãy chạy migration mới nhất hoặc deploy lại bản index.html mới nhất.`;
+      document.body.appendChild(bar);
+    }
+  } catch(e){ /* im lặng bỏ qua, không ảnh hưởng luồng dùng app bình thường */ }
+}
+
 /* ================= STATE ================= */
 let currentRid = localStorage.getItem('qa_rid') || '';
 let currentTable = localStorage.getItem('qa_table') || '';
@@ -1230,6 +1249,7 @@ async function fromSplash(){
 
 function boot(){
   if (!isConfigured) { hideAllScreens(); return; }
+  checkSchemaVersion();
   const params = new URLSearchParams(location.search);
 
   const rParam = params.get('r');
