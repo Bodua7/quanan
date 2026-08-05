@@ -297,12 +297,14 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
       <div class="login-box">
         <div style="font-size:40px;margin-bottom:8px">🔐</div>
         <div class="card">
+          <p class="card-title" id="adminLoginRestName" style="margin-top:0">Đăng nhập quản lý</p>
           <label>Mã quản lý (PIN)</label>
           <input type="password" id="inpAdminPin" placeholder="Nhập mã PIN">
           <button class="btn btn-primary" style="margin-top:12px" onclick="adminLogin()">Đăng nhập</button>
           <button class="btn btn-outline" style="margin-top:8px" onclick="goCustomer()">← Quay lại đặt món</button>
         </div>
         <p class="muted">Nhập PIN nhân viên hoặc PIN chủ quán của quán này (đổi trong tab ⚙️ Cài đặt sau khi đăng nhập bằng PIN chủ quán)</p>
+        <p class="muted" style="color:#dc2626">⚠️ Không đúng quán của bạn? Bấm "← Quay lại đặt món" rồi quét lại đúng mã QR dán tại quán, tránh sửa nhầm dữ liệu quán khác.</p>
       </div>
     </div>
   </div>
@@ -1074,6 +1076,7 @@ function onDataUpdate(){
   if (!document.getElementById('scr-splash').classList.contains('hidden')) renderSplash();
   if (!document.getElementById('scr-menu').classList.contains('hidden')) renderMenu();
   if (!document.getElementById('scr-track').classList.contains('hidden')) renderTrackFromState();
+  if (!document.getElementById('scr-admin-login').classList.contains('hidden')) updateAdminLoginRestName();
   if (!document.getElementById('scr-admin').classList.contains('hidden')){
     renderOrders(); renderMenuAdmin(); renderInventory(); renderStaffList(); renderQrCode();
   }
@@ -1204,7 +1207,12 @@ function confirmTable(){
 }
 
 function goCustomer(){ clearAdminSession(); boot(); }
-function goAdminLogin(){ hideAllScreens(); document.getElementById('scr-admin-login').classList.remove('hidden'); }
+function goAdminLogin(){ hideAllScreens(); document.getElementById('scr-admin-login').classList.remove('hidden'); updateAdminLoginRestName(); }
+function updateAdminLoginRestName(){
+  const el = document.getElementById('adminLoginRestName');
+  if (!el) return;
+  el.textContent = restaurantInfo && restaurantInfo.name ? ('Đăng nhập quản lý — 🍜 ' + restaurantInfo.name) : 'Đăng nhập quản lý';
+}
 
 /* ================= CHỌN QUÁN (trung tâm nhiều quán) ================= */
 async function showRestaurantList(){
@@ -1331,6 +1339,10 @@ function enterRestaurantAsMaster(id){
   localStorage.setItem('qa_rid', id);
   isAdmin = true; mgmtRole = 'admin'; viaMaster = true;
   sessionStorage.setItem('qa_isAdmin','1'); sessionStorage.setItem('qa_role','admin'); sessionStorage.setItem('qa_viaMaster','1');
+  // Dọn sạch dữ liệu của quán vừa xem trước đó ngay lập tức, tránh hiện nhầm
+  // dữ liệu cũ (dù chỉ trong tích tắc) trong lúc chờ tải dữ liệu quán mới.
+  menuItems = {}; ordersMap = {}; inventoryItems = {}; staffList = {}; restaurantInfo = {};
+  ordersFetched = false;
   startPolling();
   showAdmin();
 }
