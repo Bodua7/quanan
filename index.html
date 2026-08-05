@@ -227,6 +227,17 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
     <p class="splash-tagline" id="splashTagline"></p>
   </div>
 
+  <!-- Popup nhắc khách bật định vị (GPS) khi quán bật yêu cầu định vị cho khách -->
+  <div class="modal-bg" id="modalCustomerLocation">
+    <div class="modal-box" style="text-align:center">
+      <div style="font-size:40px;margin-bottom:8px">📍</div>
+      <div class="card-title" style="justify-content:center">Cần bật định vị để gọi món</div>
+      <p class="muted" id="custLocMsg" style="margin:10px 0 20px"></p>
+      <button class="btn btn-primary" onclick="retryCustomerLocation()">🔄 Thử lại</button>
+      <div class="modal-close" onclick="closeModal('modalCustomerLocation')" style="margin-top:12px">✕ Đóng</div>
+    </div>
+  </div>
+
   <!-- Quán bị chủ chuỗi tạm ngưng: chặn mọi truy cập của khách/nhân viên/chủ quán -->
   <div id="scr-suspended" class="pad hidden" style="text-align:center;padding-top:60px">
     <div style="font-size:48px">🚫</div>
@@ -429,7 +440,7 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
       </div>
       <div class="card">
         <div class="card-title">📍 Vị trí quán (bắt buộc định vị cho nhân viên)</div>
-        <p class="muted">Nhân viên chỉ đăng nhập được khi đang đứng trong phạm vi 20m quanh vị trí này và đã bật định vị (GPS). Đứng tại quán rồi bấm "Lấy vị trí hiện tại" để lưu tọa độ.</p>
+        <p class="muted">Nhân viên chỉ đăng nhập được khi đang đứng trong phạm vi 30m quanh vị trí này và đã bật định vị (GPS). Đứng tại quán rồi bấm "Lấy vị trí hiện tại" để lưu tọa độ.</p>
         <div class="row">
           <div><label>Vĩ độ (lat)</label><input id="setRestLat" type="number" step="any"></div>
           <div><label>Kinh độ (lng)</label><input id="setRestLng" type="number" step="any"></div>
@@ -437,6 +448,14 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
         <button class="btn btn-outline" style="margin-top:10px" onclick="useMyLocationForRestaurant()">📍 Lấy vị trí hiện tại</button>
         <button class="btn btn-primary" style="margin-top:8px" onclick="saveRestaurantLocation()">Lưu vị trí quán</button>
         <p class="muted" id="restLocStatus" style="margin-top:6px"></p>
+        <div class="toggle-row" style="margin-top:16px">
+          <input type="checkbox" id="setReqCustomerLoc">
+          <label for="setReqCustomerLoc">Bắt buộc định vị khi KHÁCH gọi món (chặn khách ngồi nhà quét lại QR để gọi món hộ)</label>
+        </div>
+        <label>Bán kính cho phép (mét)</label>
+        <input id="setCustomerLocRadius" type="number" min="10" placeholder="VD: 30">
+        <p class="muted" style="margin-top:6px">Khi bật, khách phải đứng trong bán kính này quanh tọa độ quán ở trên (đã lưu) và đã bật định vị (GPS) thì mới bấm được "Xem Menu & Gọi Món". Nếu chưa lưu tọa độ quán, mục này sẽ không có tác dụng chặn ai cả.</p>
+        <button class="btn btn-primary" style="margin-top:10px" onclick="saveCustomerLocationSettings()">Lưu cài đặt định vị khách</button>
       </div>
       <div class="card">
         <div class="card-title">🔑 Mã PIN đăng nhập</div>
@@ -1079,6 +1098,8 @@ function onDataUpdate(){
   });
   document.getElementById('setRestLat').value = restaurantInfo.lat || '';
   document.getElementById('setRestLng').value = restaurantInfo.lng || '';
+  document.getElementById('setReqCustomerLoc').checked = !!restaurantInfo.requireCustomerLocation;
+  document.getElementById('setCustomerLocRadius').value = restaurantInfo.customerLocationRadius || CUSTOMER_LOCATION_RADIUS_M_DEFAULT;
   document.getElementById('setQrColor').value = '#' + (restaurantInfo.qrColor || '312e81');
   document.getElementById('setQrBgColor').value = '#' + (restaurantInfo.qrBgColor || 'ffffff');
   document.getElementById('setQrLogoOn').checked = !!restaurantInfo.qrLogoOn;
@@ -1171,7 +1192,11 @@ function showSuspended(){
   document.getElementById('scr-suspended').classList.remove('hidden');
 }
 
-function fromSplash(){
+async function fromSplash(){
+  if (restaurantInfo.requireCustomerLocation){
+    const ok = await checkCustomerLocation();
+    if (!ok) return; // popup định vị đã hiện, không cho vào menu
+  }
   // Luôn cho khách nhập lại số bàn ở đây, KHÔNG dùng/gợi ý số bàn cũ đã lưu -
   // vì không phải lần nào khách cũng ngồi đúng bàn cũ (đổi bàn, quán chỉ có 1 QR chung...).
   hideAllScreens();
@@ -1855,7 +1880,7 @@ function haversineMeters(lat1, lon1, lat2, lon2){
   return R * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
 }
 // Nhân viên chỉ được đăng nhập khi đã bật định vị và đang đứng trong bán kính cho phép quanh quán.
-const STAFF_LOGIN_RADIUS_M = 20;
+const STAFF_LOGIN_RADIUS_M = 30;
 function checkStaffLocation(){
   return new Promise(resolve => {
     const rLat = parseFloat(restaurantInfo.lat);
@@ -1883,6 +1908,45 @@ function checkStaffLocation(){
       { enableHighAccuracy:true, timeout:10000 }
     );
   });
+}
+// Khách gọi món qua QR cũng có thể bị bắt buộc định vị (tùy chủ quán bật/tắt
+// ở mục ⚙️ Cài đặt), để chặn trường hợp khách chụp/chuyển mã QR về nhà rồi
+// nhờ người khác gọi món hộ.
+const CUSTOMER_LOCATION_RADIUS_M_DEFAULT = 30;
+function checkCustomerLocation(){
+  return new Promise(resolve => {
+    const rLat = parseFloat(restaurantInfo.lat);
+    const rLng = parseFloat(restaurantInfo.lng);
+    // Chưa có tọa độ quán -> không thể kiểm tra, cho qua để không chặn nhầm khách.
+    if ((!rLat && rLat !== 0) || (!rLng && rLng !== 0)) return resolve(true);
+    const radius = Number(restaurantInfo.customerLocationRadius) || CUSTOMER_LOCATION_RADIUS_M_DEFAULT;
+    if (!navigator.geolocation){
+      showCustomerLocationPopup('Thiết bị/trình duyệt của bạn không hỗ trợ định vị (GPS) nên chưa thể gọi món qua mã QR này. Vui lòng thử bằng trình duyệt hoặc thiết bị khác.');
+      return resolve(false);
+    }
+    navigator.geolocation.getCurrentPosition(
+      pos => {
+        const dist = haversineMeters(pos.coords.latitude, pos.coords.longitude, rLat, rLng);
+        if (dist > radius){
+          showCustomerLocationPopup('Có vẻ bạn đang không có mặt tại quán (cách khoảng ' + Math.round(dist) + 'm). Vui lòng đến quán và quét lại mã QR để gọi món.');
+          resolve(false);
+        } else resolve(true);
+      },
+      () => {
+        showCustomerLocationPopup('Vui lòng bật định vị (GPS) và cho phép trình duyệt truy cập vị trí để gọi món. Quán chỉ nhận đơn khi khách đang có mặt tại quán.');
+        resolve(false);
+      },
+      { enableHighAccuracy:true, timeout:10000 }
+    );
+  });
+}
+function showCustomerLocationPopup(msg){
+  document.getElementById('custLocMsg').textContent = msg;
+  document.getElementById('modalCustomerLocation').classList.add('active');
+}
+async function retryCustomerLocation(){
+  closeModal('modalCustomerLocation');
+  fromSplash();
 }
 async function adminLogin(){
   if (restaurantInfo && restaurantInfo.active === false){
@@ -2711,6 +2775,16 @@ async function saveRestaurantLocation(){
   await apiPost({action:'saveSettings', lat: lat, lng: lng});
   fetchAll();
   alert('Đã lưu vị trí quán!');
+}
+async function saveCustomerLocationSettings(){
+  const on = document.getElementById('setReqCustomerLoc').checked;
+  const radius = Number(document.getElementById('setCustomerLocRadius').value) || CUSTOMER_LOCATION_RADIUS_M_DEFAULT;
+  if (on && (!restaurantInfo.lat || !restaurantInfo.lng)){
+    if (!confirm('Quán chưa lưu tọa độ (mục 📍 Vị trí quán ở trên). Nếu bật mà chưa có tọa độ, tính năng này sẽ KHÔNG chặn được khách. Vẫn muốn lưu?')) return;
+  }
+  await apiPost({action:'saveSettings', requireCustomerLocation: on, customerLocationRadius: radius});
+  fetchAll();
+  alert('Đã lưu cài đặt định vị khách!');
 }
 async function changeStaffPin(){
   const p = document.getElementById('setNewStaffPin').value.trim();
