@@ -191,7 +191,7 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
         <div style="font-size:40px;margin-bottom:8px">🏬</div>
         <div class="card">
           <label>Mã chủ chuỗi (Master PIN)</label>
-          <input type="password" id="inpMasterPin" placeholder="Nhập mã chủ chuỗi">
+          <input type="password" autocomplete="off" id="inpMasterPin" placeholder="Nhập mã chủ chuỗi">
           <button class="btn btn-primary" style="margin-top:12px" onclick="masterLogin()">Đăng nhập</button>
           <button class="btn btn-outline" style="margin-top:8px" onclick="cancelMasterLogin()">← Quay lại</button>
         </div>
@@ -209,11 +209,11 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
     <div class="card">
       <div class="card-title">🔑 Đổi mã chủ chuỗi</div>
       <label>Mã hiện tại</label>
-      <input type="password" id="mpOld" placeholder="Mã chủ chuỗi hiện tại">
+      <input type="password" autocomplete="off" id="mpOld" placeholder="Mã chủ chuỗi hiện tại">
       <label style="margin-top:8px">Mã mới</label>
-      <input type="password" id="mpNew" placeholder="Mã chủ chuỗi mới">
+      <input type="password" autocomplete="off" id="mpNew" placeholder="Mã chủ chuỗi mới">
       <label style="margin-top:8px">Nhập lại mã mới</label>
-      <input type="password" id="mpNew2" placeholder="Nhập lại mã mới">
+      <input type="password" autocomplete="off" id="mpNew2" placeholder="Nhập lại mã mới">
       <button class="btn btn-primary" style="margin-top:12px" onclick="changeMasterPin()">Lưu mã mới</button>
     </div>
     <button class="btn btn-outline" onclick="masterLogout()">🚪 Đăng xuất</button>
@@ -324,7 +324,7 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
         <div class="card">
           <p class="card-title" id="adminLoginRestName" style="margin-top:0">Đăng nhập quản lý</p>
           <label>Mã quản lý (PIN)</label>
-          <input type="password" id="inpAdminPin" placeholder="Nhập mã PIN">
+          <input type="password" autocomplete="off" id="inpAdminPin" placeholder="Nhập mã PIN">
           <button class="btn btn-primary" style="margin-top:12px" onclick="adminLogin()">Đăng nhập</button>
           <button class="btn btn-outline" style="margin-top:8px" onclick="goCustomer()">← Quay lại đặt món</button>
         </div>
@@ -383,6 +383,7 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
         <input type="date" id="stockDate" onchange="loadStocktake()">
         <div id="stockList" style="margin-top:10px"></div>
         <button class="btn btn-green" style="margin-top:10px" onclick="saveStocktake()">💾 Lưu phiếu kiểm kê</button>
+        <button class="btn" style="margin-top:8px" onclick="applyStocktakeToInventory()">✅ Áp dụng vào kho</button>
       </div>
     </div>
 
@@ -467,10 +468,10 @@ textarea.bulk-ta { min-height:220px; font-family:monospace; font-size:12.5px; re
         <div class="card-title">🔑 Mã PIN đăng nhập</div>
         <p class="muted">2 cổng riêng biệt: PIN nhân viên chỉ vào được Bếp/Kho/Kiểm kê; PIN chủ quán vào được toàn bộ (kể cả Thực đơn, Nhân viên, Cài đặt).</p>
         <label>Đổi mã PIN chủ quán</label>
-        <input type="password" id="setNewPin" placeholder="Mã PIN chủ quán mới (4-6 số)">
+        <input type="password" autocomplete="off" id="setNewPin" placeholder="Mã PIN chủ quán mới (4-6 số)">
         <button class="btn btn-primary" style="margin-top:10px" onclick="changePin()">Đổi PIN chủ quán</button>
         <label>Đổi mã PIN nhân viên</label>
-        <input type="password" id="setNewStaffPin" placeholder="Mã PIN nhân viên mới (4-6 số)">
+        <input type="password" autocomplete="off" id="setNewStaffPin" placeholder="Mã PIN nhân viên mới (4-6 số)">
         <button class="btn btn-blue" style="margin-top:10px" onclick="changeStaffPin()">Đổi PIN nhân viên</button>
       </div>
       <div class="card">
@@ -709,7 +710,7 @@ Mì cay gà - 40k"></textarea>
       <label>Chọn tên</label>
       <select id="ckStaffSelect"></select>
       <label>Mã PIN cá nhân</label>
-      <input type="password" id="ckPin" maxlength="4">
+      <input type="password" autocomplete="off" id="ckPin" maxlength="4">
       <div class="row" style="margin-top:14px">
         <button class="btn btn-green" onclick="staffCheckIn()">✅ Check-in</button>
         <button class="btn btn-red" onclick="staffCheckOut()">🚪 Check-out</button>
@@ -776,6 +777,15 @@ let viaMaster = sessionStorage.getItem('qa_viaMaster') === '1';
 function clearAdminSession(){
   isAdmin = false; mgmtRole = ''; viaMaster = false;
   sessionStorage.removeItem('qa_isAdmin'); sessionStorage.removeItem('qa_role'); sessionStorage.removeItem('qa_viaMaster');
+  sessionStorage.removeItem('qa_loginTs');
+}
+/* FIX #11: tự đăng xuất phiên quản lý sau 4 tiếng không hoạt động lại từ đầu,
+   tránh trường hợp PIN đã bị đổi ở nơi khác mà phiên cũ (sessionStorage) vẫn
+   còn hiệu lực vô thời hạn trên thiết bị đang mở sẵn. */
+const ADMIN_SESSION_MAX_MS = 4 * 60 * 60 * 1000;
+function isAdminSessionExpired(){
+  const ts = Number(sessionStorage.getItem('qa_loginTs') || 0);
+  return !ts || (Date.now() - ts > ADMIN_SESSION_MAX_MS);
 }
 let ordersFilter = 'active';
 const STATUS_STEPS = [
@@ -786,7 +796,16 @@ const STATUS_STEPS = [
 ];
 
 function money(n){ return (Number(n)||0).toLocaleString('vi-VN') + 'đ'; }
-function todayStr(){ return new Date().toISOString().split('T')[0]; }
+/* FIX #14: dùng đúng giờ Việt Nam (Asia/Ho_Chi_Minh) thay vì toISOString()
+   (giờ UTC), tránh lệch 1 ngày gần nửa đêm - ảnh hưởng chấm công/kiểm kê. */
+function todayStr(){
+  return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Ho_Chi_Minh' }); // en-CA -> "YYYY-MM-DD"
+}
+/* FIX #15: luôn hiển thị giờ theo Asia/Ho_Chi_Minh, không phụ thuộc múi giờ
+   cài đặt trên máy khách/nhân viên (nếu máy lỡ để sai múi giờ). */
+function vnTime(ms){
+  return new Date(Number(ms)).toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+}
 function toMap(arr){ const m={}; (arr||[]).forEach(x=>{ if(x.id) m[x.id]=x; }); return m; }
 function safeJSON(s, fallback){ try{ const v = typeof s==='string' ? JSON.parse(s) : s; return Array.isArray(v) ? v : fallback; }catch(e){ return fallback; } }
 const SUGAR_LEVELS = ['Giảm đường','Bình thường','Tăng đường'];
@@ -893,7 +912,7 @@ async function sbGetAll(){
   const [menuR, ordersR, invR, staffR, restR] = await Promise.all([
     sb.from('menu').select('*').eq('restaurantId', rid),
     sb.from('orders').select('*').eq('restaurantId', rid),
-    sb.from('inventory').select('*').eq('restaurantId', rid),
+    sb.from('inventory').select('*').eq('restaurantId', rid).eq('active', true), // FIX #7: chỉ lấy nguyên liệu chưa bị ẩn
     sb.from('staff').select('*').eq('restaurantId', rid),
     sb.from('restaurants').select('*').eq('id', rid).maybeSingle()
   ]);
@@ -921,8 +940,11 @@ async function apiPost(body){
       case 'deleteMenuItem': { const { error } = await sb.from('menu').delete().eq('id', body.id).eq('restaurantId', currentRid); if(error) throw error; return {ok:true}; }
       case 'renameMenuCategory': { const { error } = await sb.from('menu').update({category: body.newName}).eq('restaurantId', currentRid).eq('category', body.oldName); if(error) throw error; return {ok:true}; }
       case 'saveInventoryItem': return await sbSaveInventoryItem(body);
-      case 'deleteInventoryItem': { const { error } = await sb.from('inventory').delete().eq('id', body.id).eq('restaurantId', currentRid); if(error) throw error; return {ok:true}; }
+      // FIX #7: ẩn (soft delete) thay vì xoá thật, để lịch sử kiểm kê (stocktake,
+      // itemId dạng text không có khoá ngoại) vẫn tra được tên nguyên liệu cũ.
+      case 'deleteInventoryItem': { const { error } = await sb.from('inventory').update({ active:false }).eq('id', body.id).eq('restaurantId', currentRid); if(error) throw error; return {ok:true}; }
       case 'saveStocktake': return await sbSaveStocktake(body);
+      case 'applyStocktake': { const { error } = await sb.rpc('apply_stocktake', { p_rid: currentRid, p_date: body.date }); if(error) throw error; return {ok:true}; }
       case 'addStaff': { const { data, error } = await sb.from('staff').insert({ restaurantId: currentRid, name:body.name, pin:body.pin }).select().single(); if(error) throw error; return {ok:true, id:data.id}; }
       case 'deleteStaff': { const { error } = await sb.from('staff').delete().eq('id', body.id).eq('restaurantId', currentRid); if(error) throw error; return {ok:true}; }
       case 'checkIn': return await sbCheckIn(body);
@@ -933,7 +955,9 @@ async function apiPost(body){
       case 'changeMasterPin': return await sbChangeMasterPin(body);
       case 'saveRestaurant': return await sbSaveRestaurant(body);
       case 'createTempAdminPin': return await sbCreateTempAdminPin(body);
-      case 'deleteRestaurant': { const { error } = await sb.from('restaurants').delete().eq('id', body.id); if(error) throw error; return {ok:true}; }
+      // FIX #8: dùng RPC an toàn - tự chặn nếu quán còn đơn pending/preparing/ready,
+      // tránh xoá nhầm mất dữ liệu đơn dở dang do "on delete cascade".
+      case 'deleteRestaurant': { const { error } = await sb.rpc('delete_restaurant_safe', { p_rid: body.id }); if(error) throw error; return {ok:true}; }
       default: return { ok:false, error:'unknown action' };
     }
   } catch(err){ return { ok:false, error:String(err.message||err) }; }
@@ -998,13 +1022,20 @@ async function sbSaveMenuItem(body){
 }
 
 async function sbSaveInventoryItem(body){
-  const row = { name: body.name, qty: body.qty, unit: body.unit, minQty: body.minQty };
+  // FIX #5: name/unit/minQty ghi đè bình thường, nhưng qty CỘNG DỒN theo delta
+  // (qua RPC atomic) thay vì ghi đè số tuyệt đối, để 2 người sửa kho gần nhau
+  // không làm mất thay đổi của nhau.
+  const row = { name: body.name, unit: body.unit, minQty: body.minQty };
   if (body.id){
     const { error } = await sb.from('inventory').update(row).eq('id', body.id).eq('restaurantId', currentRid);
     if (error) throw error;
+    if (body.qtyDelta){
+      const { error: adjErr } = await sb.rpc('adjust_inventory_qty', { p_id: body.id, p_delta: body.qtyDelta });
+      if (adjErr) throw adjErr;
+    }
     return { ok:true, id:body.id };
   }
-  const { data, error } = await sb.from('inventory').insert({ ...row, restaurantId: currentRid }).select().single();
+  const { data, error } = await sb.from('inventory').insert({ ...row, qty: body.qty||0, restaurantId: currentRid }).select().single();
   if (error) throw error;
   return { ok:true, id:data.id };
 }
@@ -1072,18 +1103,28 @@ async function sbChangeMasterPin(body){
 }
 
 async function sbSaveRestaurant(body){
-  const { adminPin, staffPin, action, id, ...rest } = body;
+  const { adminPin, staffPin, action, id, expectedUpdatedAt, ...rest } = body;
   let rid = id;
   if (id){
-    const { error } = await sb.from('restaurants').update(rest).eq('id', id);
+    // FIX #9: chỉ update nếu "updatedAt" hiện tại trong DB vẫn khớp mốc lúc mở modal
+    // -> nếu chủ chuỗi khác vừa sửa quán này sau đó, updatedAt đã đổi, .eq() không
+    // khớp -> 0 dòng bị update -> báo xung đột thay vì âm thầm ghi đè mất thay đổi kia.
+    let q = sb.from('restaurants').update(rest).eq('id', id);
+    if (expectedUpdatedAt) q = q.eq('updatedAt', expectedUpdatedAt);
+    const { data, error } = await q.select();
     if (error) throw error;
+    if (expectedUpdatedAt && (!data || data.length===0)){
+      throw new Error('Quán này vừa bị người khác sửa (có thể chủ chuỗi khác dùng chung mã). Vui lòng tải lại và kiểm tra trước khi lưu lại.');
+    }
   } else {
     const { data, error } = await sb.from('restaurants').insert({ ...rest, createdAt: Date.now() }).select().single();
     if (error) throw error;
     rid = data.id;
   }
   if (adminPin || staffPin || !id){
-    const { error } = await sb.rpc('set_restaurant_pins', { p_rid: rid, p_admin_pin: adminPin||null, p_staff_pin: staffPin||null });
+    // FIX #10: chỉ đánh dấu "đã đổi PIN" khi chủ chuỗi CHỦ ĐỘNG nhập PIN riêng;
+    // nếu tạo quán mới mà bỏ trống (dùng mặc định 1234/5678) thì giữ cờ nhắc đổi PIN.
+    const { error } = await sb.rpc('set_restaurant_pins', { p_rid: rid, p_admin_pin: adminPin||null, p_staff_pin: staffPin||null, p_mark_changed: !!(adminPin || staffPin) });
     if (error) throw error;
   }
   return { ok:true, id:rid };
@@ -1098,12 +1139,18 @@ async function sbCreateTempAdminPin(body){
 }
 
 let polling = false;
+/* FIX #18: đánh số thứ tự mỗi lần gọi fetchAll - nếu 1 request cũ trả lời SAU
+   1 request mới hơn (mất mạng chập chờn khiến thứ tự phản hồi bị đảo), bỏ qua
+   kết quả cũ để không hiển thị lùi trạng thái đơn hàng. */
+let fetchAllSeq = 0;
 async function fetchAll(){
   if (!isConfigured || !currentRid) return;
+  const mySeq = ++fetchAllSeq;
   const dot = document.getElementById('syncDot');
   dot.classList.remove('hidden');
   try {
     const data = await apiGet({action:'getAll'});
+    if (mySeq !== fetchAllSeq) return; // đã có request mới hơn chạy sau, bỏ kết quả cũ này
     if (data.ok){
       menuItems = toMap(data.menu);
       ordersMap = toMap(data.orders);
@@ -1114,7 +1161,7 @@ async function fetchAll(){
       onDataUpdate();
     }
   } catch(err){ console.error('Lỗi đồng bộ:', err); }
-  finally { dot.classList.add('hidden'); }
+  finally { if (mySeq === fetchAllSeq) dot.classList.add('hidden'); }
 }
 
 function onDataUpdate(){
@@ -1188,11 +1235,40 @@ function renderSplash(){
   document.getElementById('splashContact').innerHTML = phoneBtns + fbBtns;
 }
 
+/* FIX #16: chỉ 1 tab (leader) chạy polling định kỳ trong cùng trình duyệt,
+   tránh mở nhiều tab cùng 1 quán gọi API lặp lại tốn quota Supabase free tier.
+   Leader tự "nhắc" mình còn sống mỗi 5s qua localStorage; nếu leader hiện tại
+   im lặng quá 8s (đóng tab, crash...) thì tab khác tự giành quyền leader. */
+const POLL_TAB_ID = Math.random().toString(36).slice(2);
+function tryBecomeLeader(){
+  const last = Number(localStorage.getItem('qa_pollLeaderTs') || 0);
+  const owner = localStorage.getItem('qa_pollLeaderId');
+  if (!owner || Date.now() - last > 8000 || owner === POLL_TAB_ID){
+    localStorage.setItem('qa_pollLeaderId', POLL_TAB_ID);
+    localStorage.setItem('qa_pollLeaderTs', String(Date.now()));
+    return true;
+  }
+  return false;
+}
+/* FIX #17: báo rõ khi mất mạng thay vì im lặng (nhân viên tưởng bếp rảnh việc). */
+function showOfflineBanner(show){
+  let bar = document.getElementById('offlineBar');
+  if (show && !bar){
+    bar = document.createElement('div');
+    bar.id = 'offlineBar';
+    bar.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:9999;background:#92400e;color:#fff;padding:8px 12px;font-size:13px;text-align:center';
+    bar.textContent = '📡 Mất kết nối mạng - dữ liệu có thể không cập nhật, đang thử kết nối lại...';
+    document.body.appendChild(bar);
+  } else if (!show && bar){ bar.remove(); }
+}
+window.addEventListener('offline', ()=> showOfflineBanner(true));
+window.addEventListener('online', ()=>{ showOfflineBanner(false); fetchAll(); });
+
 function startPolling(){
   if (polling) return;
   polling = true;
   fetchAll();
-  setInterval(fetchAll, 20000); // dự phòng, phòng khi mất kết nối realtime
+  setInterval(()=>{ if (tryBecomeLeader()) fetchAll(); }, 20000); // dự phòng, phòng khi mất kết nối realtime
   startRealtime();
 }
 
@@ -1274,6 +1350,7 @@ function boot(){
     if (!currentRid) { showRestaurantList(); return; }
     startPolling(); goAdminLogin(); return;
   }
+  if (isAdmin && isAdminSessionExpired()) { clearAdminSession(); }
   if (isAdmin && currentRid) { startPolling(); showAdmin(); return; }
   if (currentOrderId && currentRid) { startPolling(); showTrack(); return; }
   if (currentRid) { startPolling(); showSplash(); return; }
@@ -1434,7 +1511,7 @@ async function createTempAdminPin(id, name){
   try { res = await apiPost({action:'createTempAdminPin', id}); }
   catch(err){ return alert('Lỗi kết nối: ' + (err && err.message ? err.message : err)); }
   if (!res || !res.ok) return alert('Không tạo được mã tạm: ' + (res && res.error ? res.error : 'lỗi không xác định'));
-  const expireTxt = new Date(res.expiresAt).toLocaleTimeString('vi-VN');
+  const expireTxt = vnTime(res.expiresAt);
   alert(`🆘 Mã tạm cho "${name||'quán'}": ${res.tempPin}\n\nĐọc mã này cho chủ quán, họ vào màn "Đăng nhập quản lý" nhập mã này như PIN chủ quán bình thường.\nMã hết hạn lúc ${expireTxt} (hoặc hết hạn ngay sau khi dùng 1 lần).`);
 }
 function enterRestaurantAsMaster(id){
@@ -1442,6 +1519,7 @@ function enterRestaurantAsMaster(id){
   localStorage.setItem('qa_rid', id);
   isAdmin = true; mgmtRole = 'admin'; viaMaster = true;
   sessionStorage.setItem('qa_isAdmin','1'); sessionStorage.setItem('qa_role','admin'); sessionStorage.setItem('qa_viaMaster','1');
+  sessionStorage.setItem('qa_loginTs', String(Date.now()));
   // Dọn sạch dữ liệu của quán vừa xem trước đó ngay lập tức, tránh hiện nhầm
   // dữ liệu cũ (dù chỉ trong tích tắc) trong lúc chờ tải dữ liệu quán mới.
   menuItems = {}; ordersMap = {}; inventoryItems = {}; staffList = {}; restaurantInfo = {};
@@ -1458,6 +1536,7 @@ function backToMasterDashboard(){
 function openRestaurantModal(id){
   const r = id ? masterRestaurants[id] : {};
   document.getElementById('mrId').value = id||'';
+  document.getElementById('mrId').dataset.expectedUpdatedAt = r?.updatedAt || ''; // FIX #9: nhớ mốc sửa gần nhất lúc mở modal
   document.getElementById('mrName').value = r?.name||'';
   document.getElementById('mrAddr').value = r?.address||'';
   document.getElementById('mrAdminPin').value = id ? '' : '1234';
@@ -1474,7 +1553,10 @@ async function saveRestaurantMaster(){
     action:'saveRestaurant', id: id||undefined,
     name: document.getElementById('mrName').value.trim(),
     address: document.getElementById('mrAddr').value.trim(),
-    active: document.getElementById('mrActive').checked
+    active: document.getElementById('mrActive').checked,
+    // FIX #9: gửi kèm mốc sửa gần nhất lúc mở modal, để server phát hiện nếu
+    // người khác (chủ chuỗi khác dùng chung mã 9999) đã sửa quán này sau đó.
+    expectedUpdatedAt: id ? (document.getElementById('mrId').dataset.expectedUpdatedAt || null) : null
   };
   const newAdminPin = document.getElementById('mrAdminPin').value.trim();
   const newStaffPin = document.getElementById('mrStaffPin').value.trim();
@@ -1810,13 +1892,20 @@ async function submitOrder(){
   if (cartCount()===0) return alert('Giỏ hàng trống!');
   const btn = document.getElementById('btnSubmitOrder');
   btn.disabled = true; btn.textContent = 'Đang gửi...';
+  // FIX #1 + #2: tải lại menu MỚI NHẤT ngay trước khi gửi, để không dùng giá/loại
+  // món đã lỗi thời nếu khách xem menu lâu và quán vừa đổi giá / bật size-topping.
+  try { await fetchAll(); } catch(e) { /* nếu lỗi mạng, vẫn thử gửi với dữ liệu đang có */ }
   // Loại bỏ các món đã bị quán xóa/ngừng bán khỏi giỏ trước khi gửi, tránh lỗi khi đọc dữ liệu món không còn tồn tại
   const missingIds = Object.keys(cart).filter(id => !menuItems[id]);
-  if (missingIds.length){
+  // FIX #2: món trong giỏ ĐƠN GIẢN (không size/topping) nhưng quán VỪA bật tuỳ chọn
+  // cho món đó -> giá/luật chọn đã đổi, bắt khách chọn lại thay vì gửi giá cũ sai.
+  const nowVariantIds = Object.keys(cart).filter(id => menuItems[id] && itemHasVariant(menuItems[id]));
+  if (missingIds.length || nowVariantIds.length){
     missingIds.forEach(id => delete cart[id]);
+    nowVariantIds.forEach(id => delete cart[id]);
     updateCartBar();
     btn.disabled = false; btn.textContent = '✅ Xác nhận gửi tới quán';
-    alert('Một số món trong giỏ đã bị quán ngừng bán nên đã được bỏ khỏi đơn. Vui lòng kiểm tra lại giỏ hàng rồi gửi lại nhé!');
+    alert('Một số món trong giỏ đã thay đổi (ngừng bán hoặc quán vừa cập nhật size/topping) nên đã được bỏ khỏi đơn để tránh sai giá. Vui lòng chọn lại rồi gửi lại nhé!');
     showCart();
     return;
   }
@@ -1872,6 +1961,13 @@ function showTrack(){
 function renderTrackFromState(){
   const o = ordersMap[currentOrderId];
   if (!ordersFetched) return; // chưa tải dữ liệu lần nào thì chưa kết luận được gì, chờ lần fetch tiếp theo
+  // FIX #20: phòng hờ đơn thuộc quán khác lẫn vào (đề phòng lỗi khác làm
+  // ordersMap có dữ liệu ngoài quán hiện tại) - không hiển thị nhầm đơn.
+  if (o && o.restaurantId && o.restaurantId !== currentRid){
+    localStorage.removeItem('qa_orderId'); currentOrderId = null;
+    hideAllScreens(); document.getElementById('scr-menu').classList.remove('hidden'); renderMenu();
+    return;
+  }
   if (!o || o.status==='cancelled'){
     // Đơn không còn tồn tại (quán đã xóa) hoặc đã bị hủy: không được kẹt lại màn hình cũ,
     // phải dọn trạng thái và đưa khách quay về thực đơn để gọi lại.
@@ -2040,6 +2136,7 @@ async function adminLogin(){
   viaMaster = false;
   sessionStorage.setItem('qa_isAdmin','1');
   sessionStorage.setItem('qa_role', mgmtRole);
+  sessionStorage.setItem('qa_loginTs', String(Date.now()));
   sessionStorage.removeItem('qa_viaMaster');
   document.getElementById('inpAdminPin').value = '';
   showAdmin();
@@ -2125,8 +2222,19 @@ function showAdmin(){
   document.getElementById('stockDate').value = todayStr();
   document.getElementById('checkinDate').value = todayStr();
   loadStocktake(); loadCheckinHistory();
-
+  showPinDefaultReminder();
   renderQrCode();
+}
+/* FIX #10: nhắc chủ quán đổi PIN nếu quán còn dùng PIN mặc định 1234/5678. */
+function showPinDefaultReminder(){
+  const old = document.getElementById('pinDefaultBar');
+  if (old) old.remove();
+  if (mgmtRole !== 'admin' || !restaurantInfo || !restaurantInfo.pinIsDefault) return;
+  const bar = document.createElement('div');
+  bar.id = 'pinDefaultBar';
+  bar.style.cssText = 'background:#b45309;color:#fff;padding:8px 12px;font-size:13px;text-align:center;border-radius:8px;margin-bottom:10px';
+  bar.textContent = '⚠️ Quán đang dùng PIN mặc định (1234/5678) - hãy vào tab ⚙️ Cài đặt đổi PIN ngay để bảo mật!';
+  document.getElementById('scr-admin').prepend(bar);
 }
 
 function switchAdminTab(el, tab){
@@ -2161,7 +2269,7 @@ function renderOrders(){
       </div>
       <div class="order-items">${itemsTxt}</div>
       ${o.note?`<div class="muted">Ghi chú: ${o.note}</div>`:''}
-      <div class="muted">Tổng: ${money(o.total)} • ${new Date(Number(o.createdAt)).toLocaleTimeString('vi-VN')}</div>
+      <div class="muted">Tổng: ${money(o.total)} • ${vnTime(o.createdAt)}</div>
       <div class="order-actions">
         ${next?`<button class="btn btn-blue btn-sm" onclick="setOrderStatus('${id}','${next}')">${nextLabel}</button>`:''}
         ${o.status!=='cancelled' && o.status!=='served' ?`<button class="btn btn-outline btn-sm" onclick="setOrderStatus('${id}','cancelled')">Hủy đơn</button>`:''}
@@ -2607,33 +2715,40 @@ function parseMoneyToken(tok){
 }
 function parseBulkMenu(text){
   const items = [];
+  const warnings = []; // FIX #4: gom cảnh báo dòng lỗi định dạng / giá 0 thay vì âm thầm bỏ qua
   let cat = 'Khác';
-  text.split('\n').forEach(raw=>{
+  text.split('\n').forEach((raw, i)=>{
     const line = raw.trim();
     if (!line) return;
     if (line.startsWith('##') || line.startsWith('==')) { cat = line.replace(/^#+|=+/g,'').trim() || 'Khác'; return; }
     const idx = line.lastIndexOf('-');
-    if (idx < 0) return;
+    if (idx < 0) { warnings.push(`Dòng ${i+1}: "${line}" - thiếu dấu "-" phân cách tên/giá, đã bỏ qua.`); return; }
     const name = line.slice(0, idx).trim();
     const priceSpec = line.slice(idx+1).trim();
-    if (!name || !priceSpec) return;
+    if (!name || !priceSpec) { warnings.push(`Dòng ${i+1}: "${line}" - thiếu tên hoặc giá, đã bỏ qua.`); return; }
     if (/[a-zA-ZÀ-ỹ]\s*:/.test(priceSpec) && priceSpec.includes(',')) {
       // dạng size: "M:12k, L:15k"
       const sizes = priceSpec.split(',').map(p=>{
         const [sn, sp] = p.split(':');
         return sn && sp ? { name: sn.trim(), price: parseMoneyToken(sp) } : null;
       }).filter(Boolean);
-      if (sizes.length) items.push({ name, category:cat, price: sizes[0].price, sizes });
+      if (sizes.length){
+        if (sizes.some(s=>s.price<=0)) warnings.push(`Dòng ${i+1}: "${name}" - có size giá 0đ, kiểm tra lại.`);
+        items.push({ name, category:cat, price: sizes[0].price, sizes });
+      } else warnings.push(`Dòng ${i+1}: "${line}" - không đọc được size nào, đã bỏ qua.`);
     } else {
-      items.push({ name, category:cat, price: parseMoneyToken(priceSpec), sizes: [] });
+      const price = parseMoneyToken(priceSpec);
+      if (price<=0) warnings.push(`Dòng ${i+1}: "${name}" - giá đọc được là 0đ, kiểm tra lại định dạng giá.`);
+      items.push({ name, category:cat, price, sizes: [] });
     }
   });
-  return items;
+  return { items, warnings };
 }
 async function runBulkImport(){
   const text = document.getElementById('bulkImportText').value;
-  const items = parseBulkMenu(text);
+  const { items, warnings } = parseBulkMenu(text);
   if (!items.length) { alert('Không nhận diện được món nào, kiểm tra lại định dạng.'); return; }
+  if (warnings.length && !confirm(`Có ${warnings.length} dòng nghi ngờ lỗi:\n\n${warnings.slice(0,10).join('\n')}${warnings.length>10?'\n...':''}\n\nVẫn tiếp tục nhập ${items.length} món hợp lệ còn lại?`)) return;
   if (!confirm(`Sẽ thêm ${items.length} món mới vào thực đơn. Tiếp tục?`)) return;
   document.getElementById('bulkImportPreview').textContent = 'Đang nhập...';
   for (const it of items){
@@ -2667,9 +2782,11 @@ function renderInventory(){
     </div>`;
   }).join('');
 }
+let invModalOriginalQty = 0; // FIX #5: nhớ số lượng LÚC MỞ modal để tính delta khi lưu
 function openInvModal(id){
   document.getElementById('invId').value = id||'';
   const it = id ? inventoryItems[id] : {};
+  invModalOriginalQty = Number(it?.qty) || 0;
   document.getElementById('invName').value = it?.name||'';
   document.getElementById('invQty').value = it?.qty??'';
   document.getElementById('invUnit').value = it?.unit||'';
@@ -2679,10 +2796,12 @@ function openInvModal(id){
 }
 async function saveInvItem(){
   const id = document.getElementById('invId').value;
+  const newQty = parseFloat(document.getElementById('invQty').value)||0;
   const data = {
     action:'saveInventoryItem', id: id||undefined,
     name: document.getElementById('invName').value.trim(),
-    qty: parseFloat(document.getElementById('invQty').value)||0,
+    qty: newQty, // chỉ dùng khi TẠO MỚI (chưa có id)
+    qtyDelta: id ? (newQty - invModalOriginalQty) : 0, // FIX #5: chênh lệch so với lúc mở modal, cộng dồn atomic
     unit: document.getElementById('invUnit').value.trim(),
     minQty: parseFloat(document.getElementById('invMin').value)||0
   };
@@ -2728,6 +2847,16 @@ async function saveStocktake(){
   await fetchAll();
   alert('Đã lưu phiếu kiểm kê ngày '+date+'!');
 }
+/* FIX #6: chủ động áp số kiểm kê vào kho thật (ghi đè inventory.qty),
+   tránh 2 nguồn số liệu (kho vs kiểm kê) lệch nhau vĩnh viễn không ai xử lý. */
+async function applyStocktakeToInventory(){
+  const date = document.getElementById('stockDate').value || todayStr();
+  if (!confirm('Áp dụng số liệu kiểm kê ngày '+date+' vào kho thật?\nSố lượng trong kho sẽ được ghi đè bằng số "Thực tế" đã kiểm kê.')) return;
+  await apiPost({action:'applyStocktake', date});
+  await fetchAll();
+  loadStocktake();
+  alert('Đã áp dụng kiểm kê vào kho!');
+}
 
 /* ---- STAFF & CHECK-IN (admin side) ---- */
 function renderStaffList(){
@@ -2759,8 +2888,8 @@ async function loadCheckinHistory(){
   const entries = res.checkin || [];
   if (entries.length===0){ list.innerHTML='<p class="muted">Chưa có ai chấm công ngày này.</p>'; return; }
   list.innerHTML = entries.map(c=>{
-    const inT = c.checkIn ? new Date(Number(c.checkIn)).toLocaleTimeString('vi-VN') : '--';
-    const outT = c.checkOut ? new Date(Number(c.checkOut)).toLocaleTimeString('vi-VN') : '--';
+    const inT = c.checkIn ? vnTime(c.checkIn) : '--';
+    const outT = c.checkOut ? vnTime(c.checkOut) : '--';
     let hours = '';
     if (c.checkIn && c.checkOut) hours = ((Number(c.checkOut)-Number(c.checkIn))/3600000).toFixed(1)+'h';
     return `<div class="list-row"><div><b>${c.name}</b></div><span class="muted">Vào: ${inT} • Ra: ${outT} ${hours?('• '+hours):''}</span></div>`;
@@ -2788,12 +2917,12 @@ function staffAuth(){
 async function staffCheckIn(){
   const auth = staffAuth(); if(!auth) return;
   await apiPost({action:'checkIn', staffId:auth.id, name:auth.name, date: todayStr()});
-  document.getElementById('ckStatus').textContent = '✅ '+auth.name+' đã check-in lúc '+new Date().toLocaleTimeString('vi-VN');
+  document.getElementById('ckStatus').textContent = '✅ '+auth.name+' đã check-in lúc '+vnTime(Date.now());
 }
 async function staffCheckOut(){
   const auth = staffAuth(); if(!auth) return;
   const res = await apiPost({action:'checkOut', staffId:auth.id, date: todayStr()});
-  if (res.ok) document.getElementById('ckStatus').textContent = '🚪 '+auth.name+' đã check-out lúc '+new Date().toLocaleTimeString('vi-VN');
+  if (res.ok) document.getElementById('ckStatus').textContent = '🚪 '+auth.name+' đã check-out lúc '+vnTime(Date.now());
   else document.getElementById('ckStatus').textContent = '⚠️ ' + (res.error||'Lỗi');
 }
 
